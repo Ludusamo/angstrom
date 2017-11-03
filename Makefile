@@ -24,19 +24,23 @@ LINKER_FLAGS = -Wall -Iheader
 TARGET = angstrom
 
 $(BINDIR)/$(TARGET): $(OBJECTS)
-	cd C-Data-Structures && $(MAKE)
+	@cd C-Data-Structures && $(MAKE)
+	@if [ ! -d "bin" ]; then mkdir bin; fi
 	$(CC) -o $@ $(LINKER_FLAGS) -rpath $(CURDIR)/C-Data-Structures/bin $(OBJECTS) -L./C-Data-Structures/bin -lcds
 	echo "Linking Complete!"
 
 $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
+	@if [ ! -d "obj" ]; then mkdir obj; fi
 	$(CC) -c $(CFLAGS) $< -o $@
 	echo "Compiled "$<" successfully!"
 
 clean:
+	@cd C-Data-Structures && $(MAKE) clean
 	$(RM) $(OBJECTS)
 	echo "Cleanup complete!"
 
 remove:
+	@cd C-Data-Structures && $(MAKE) remove
 	make clean
 	$(RM) $(BINDIR)/$(TARGET)
 	echo "Executable removed!"
