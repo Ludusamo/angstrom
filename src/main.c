@@ -1,8 +1,13 @@
 #include <stdio.h>
 #include "error.h"
+#include "tokenizer.h"
 
 void run(const char *exp) {
-    printf("I am going to run: %s\n", exp);
+    List *tokens = tokenize(exp);
+    for (size_t i = 0; i < tokens->length; i++) {
+        Token *t = get_ptr(access_list(tokens, i));
+        print_token(t);
+    }
 }
 
 void run_script(char *file_path) {
