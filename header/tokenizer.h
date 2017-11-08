@@ -45,11 +45,22 @@ typedef struct {
     int line;
 } Token;
 
+typedef struct {
+    const char *src;
+    int srclen;
+    int line;
+    int start;
+    int current;
+} Scanner;
+
 const char *token_type_to_str(Token_Type t);
 void print_token(const Token *t);
-Value create_token_value(Token_Type type, const char *src, int start, int end,
-                    const Value literal, int line);
-const char *copy_lexeme(const char *src, int start, int end);
+Value create_token_value(Token_Type type,
+                         const Scanner *scanner,
+                         const Value literal);
+const char *copy_cur_lexeme(const Scanner *scanner);
+void add_token(List *t_list, const Scanner *scanner,
+               Token_Type t, const Value literal);
 List *tokenize(const char *src);
 
 #endif // TOKENIZER_H
