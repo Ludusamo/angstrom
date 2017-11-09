@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include "error.h"
 
 #define DEFINE_CODE_STRING(type) case type: return #type;
 const char *token_type_to_str(Token_Type t) {
@@ -36,27 +37,87 @@ void add_token(List *t_list, const Scanner *scanner,
         create_token_value(t, scanner, literal));
 }
 
+int match(Scanner *scanner, char c) {
+    if (scanner->current > scanner->srclen) return 0;
+    if (scanner->src[scanner->current] != c) return 0;
+    scanner->current++;
+    return 1;
+}
+
+char peek(const Scanner *scanner) {
+    if (scanner->current > scanner->srclen) return '\0';
+    return scanner->src[scanner->current];
+}
+
+Value string(Scanner *scanner) {
+    while (peek(scanner) != '"' && scanner->current <= scanner->srclen) {
+        if (peek(scanner) == '\n') scanner->line++;
+        scanner->current++;
+    }
+
+    if (scanner->current > scanner->srclen) {
+        error(scanner->line,
+              UNTERMINATED_STRING,
+              "String was not properly terminated");
+        return nil_val;
+    }
+
+    scanner->current++;
+    int len = scanner->current - scanner->start - 2;
+    char *val = calloc(len, sizeof(char));
+    strncpy(val, scanner->src + scanner->start + 1, len);
+    return create_token_value(STR, scanner, from_ptr(val));
+}
+
 List *tokenize(const char *src) {
-    Scanner scanner = (Scanner) { src, strlen(src), 1, 0, 0 };
+    Scanner scan = (Scanner) { src, strlen(src), 1, 0, 0 };
 
     List *tokens = malloc(sizeof(List));
     ctor_list(tokens);
-    while (scanner.current <= scanner.srclen) {
-        scanner.start = scanner.current;
-        char c = src[scanner.current++];
+    while (scan.current < scan.srclen) {
+        scan.start = scan.current;
+        char c = src[scan.current++];
         switch (c) {
-        case '(': add_token(tokens, &scanner, LPAREN, nil_val); break;
-        case ')': add_token(tokens, &scanner, RPAREN, nil_val); break;
-        case '{': add_token(tokens, &scanner, LBRACE, nil_val); break;
-        case '}': add_token(tokens, &scanner, RBRACE, nil_val); break;
-        case '[': add_token(tokens, &scanner, LBRACK, nil_val); break;
-        case ']': add_token(tokens, &scanner, RBRACK, nil_val); break;
-        case ',': add_token(tokens, &scanner, COMMA, nil_val); break;
-        case '.': add_token(tokens, &scanner, DOT, nil_val); break;
-        case '-': add_token(tokens, &scanner, MINUS, nil_val); break;
-        case '+': add_token(tokens, &scanner, PLUS, nil_val); break;
-        case '*': add_token(tokens, &scanner, STAR, nil_val); break;
+        case '(': add_token(tokens, &scan, LPAREN, nil_val); break;
+        case ')': add_token(tokens, &scan, RPAREN, nil_val); break;
+        case '{': add_token(tokens, &scan, LBRACE, nil_val); break;
+        case '}': add_token(tokens, &scan, RBRACE, nil_val); break;
+        case '[': add_token(tokens, &scan, LBRACK, nil_val); break;
+        case ']': add_token(tokens, &scan, RBRACK, nil_val); break;
+        case ',': add_token(tokens, &scan, COMMA, nil_val); break;
+        case '.': add_token(tokens, &scan, DOT, nil_val); break;
+        case '-': add_token(tokens, &scan, MINUS, nil_val); break;
+        case '+': add_token(tokens, &scan, PLUS, nil_val); break;
+        case '/': add_token(tokens, &scan, SLASH, nil_val); break;
+        case '*': add_token(tokens, &scan, STAR, nil_val); break;
+        case '!':
+            add_token(tokens, &scan, match(&scan, '=') ? NEQ : NOT, nil_val);
+            break;
+        case '=':
+            add_token(tokens, &scan, match(&scan, '=') ? EQ_EQ : EQ, nil_val);
+            break;
+        case '<':
+            add_token(tokens, &scan, match(&scan, '=') ? LTE : LT, nil_val);
+            break;
+        case '>':
+            add_token(tokens, &scan, match(&scan, '=') ? GTE : GT, nil_val);
+            break;
+        case ' ':
+        case '\r':
+        case '\t':
+            break;
+        case '\n':
+            scan.line++;
+            break;
+        case '"':
+            append_list(tokens, string(&scan));
+            break;
+        default:
+            error(scan.line, UNEXPECTED_TOKEN, "Unexpected Character");
+            break;
         }
     }
+
+    add_token(tokens, &scan, TEOF, nil_val);
     return tokens;
 }

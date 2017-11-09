@@ -19,8 +19,8 @@
     code(STAR) \
     code(NOT) \
     code(NEQ) \
+    code(EQ_EQ) \
     code(EQ) \
-    code(ASSIGN) \
     code(GT) \
     code(GTE) \
     code(LT) \
@@ -61,6 +61,9 @@ Value create_token_value(Token_Type type,
 const char *copy_cur_lexeme(const Scanner *scanner);
 void add_token(List *t_list, const Scanner *scanner,
                Token_Type t, const Value literal);
+int match(Scanner *scanner, char t);
+char peek(const Scanner *scanner);
+Value string(Scanner *scanner);
 List *tokenize(const char *src);
 
 #endif // TOKENIZER_H
