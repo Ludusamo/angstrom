@@ -66,4 +66,5 @@ char peek(const Scanner *scanner);
 Value string(Scanner *scanner);
 List *tokenize(const char *src);
 
+void destroy_tokens(List *tokens);
 #endif // TOKENIZER_H

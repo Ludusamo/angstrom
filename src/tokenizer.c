@@ -26,7 +26,7 @@ Value create_token_value(Token_Type type,
 
 const char *copy_cur_lexeme(const Scanner *scanner) {
     size_t len = scanner->current - scanner->start;
-    char *lexeme = calloc(len, sizeof(char));
+    char *lexeme = calloc(len + 1, sizeof(char));
     strncpy(lexeme, scanner->src + scanner->start, len);
     return lexeme;
 }
@@ -64,7 +64,7 @@ Value string(Scanner *scanner) {
 
     scanner->current++;
     int len = scanner->current - scanner->start - 2;
-    char *val = calloc(len, sizeof(char));
+    char *val = calloc(len + 1, sizeof(char));
     strncpy(val, scanner->src + scanner->start + 1, len);
     return create_token_value(STR, scanner, from_ptr(val));
 }
@@ -109,15 +109,37 @@ List *tokenize(const char *src) {
         case '\n':
             scan.line++;
             break;
-        case '"':
-            append_list(tokens, string(&scan));
+        case '"': {
+            Value val = string(&scan);
+            if (val.bits == nil_val.bits) {
+                destroy_tokens(tokens);
+                dtor_list(tokens);
+                free(tokens);
+                return 0;
+            }
+            append_list(tokens, val);
             break;
+        }
         default:
             error(scan.line, UNEXPECTED_TOKEN, "Unexpected Character");
-            break;
+            destroy_tokens(tokens);
+            dtor_list(tokens);
+            free(tokens);
+            return 0;
         }
     }
 
+    scan.start = scan.current++;
     add_token(tokens, &scan, TEOF, nil_val);
     return tokens;
+}
+
+void destroy_tokens(List *tokens) {
+    for (size_t i = 0; i < tokens->length; i++) {
+        Token *tok = (Token *) get_ptr(access_list(tokens, i));
+        free((void *) tok->lexeme);
+        if (is_ptr(tok->literal)) free(get_ptr(tok->literal));
+        free(tok);
+    }
+    clear_list(tokens);
 }

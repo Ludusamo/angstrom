@@ -4,7 +4,7 @@
 
 #define DEFINE_CODE_STRING(type) case type: return #type;
 const char *error_code_to_str(Error_Code c) {
-    switch(c) {
+    switch (c) {
         ERROR_LIST(DEFINE_CODE_STRING)
     }
 }
