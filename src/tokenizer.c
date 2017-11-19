@@ -85,8 +85,17 @@ Value number(Scanner *scanner) {
     return create_token_value(NUM, scanner, from_double(val));
 }
 
+void populate_keywords(Hashtable *keywords) {
+    ctor_hashtable(keywords);
+    set_hashtable(keywords, "func", from_double(FUNC));
+    set_hashtable(keywords, "return", from_double(RET));
+}
+
 List *tokenize(const char *src) {
     Scanner scan = (Scanner) { src, strlen(src), 1, 0, 0 };
+
+    Hashtable keywords;
+    populate_keywords(&keywords);
 
     List *tokens = malloc(sizeof(List));
     ctor_list(tokens);
@@ -140,6 +149,14 @@ List *tokenize(const char *src) {
             if (isdigit(c)) {
                 Value val = number(&scan);
                 append_list(tokens, val);
+            } else if (isalpha(c)) {
+                while (isalnum(peek(&scan))) scan.current++;
+                const char *lexeme = copy_cur_lexeme(&scan);
+                Value keyword = access_hashtable(&keywords, lexeme);
+                Token_Type type = keyword.bits == nil_val.bits
+                    ? IDENT : keyword.as_int32;
+                free((void*) lexeme);
+                add_token(tokens, &scan, type, nil_val);
             } else {
                 error(scan.line, UNEXPECTED_TOKEN, "Unexpected Character");
                 destroy_tokens(tokens);
@@ -151,6 +168,7 @@ List *tokenize(const char *src) {
     }
 
     scan.start = scan.current++;
+    dtor_hashtable(&keywords);
     add_token(tokens, &scan, TEOF, nil_val);
     return tokens;
 }

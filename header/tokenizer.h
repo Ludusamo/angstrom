@@ -2,6 +2,7 @@
 #define TOKENIZER_H
 
 #include <list.h>
+#include <hashtable.h>
 #include <value.h>
 
 #define TOKEN_TYPE_LIST(code) \
@@ -66,6 +67,7 @@ char peek(const Scanner *scanner);
 char peek_next(const Scanner *scanner);
 Value string(Scanner *scanner);
 Value number(Scanner *scanner);
+void populate_keywords(Hashtable *keywords);
 List *tokenize(const char *src);
 
 void destroy_tokens(List *tokens);
