@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 #include "error.h"
 
 #define DEFINE_CODE_STRING(type) case type: return #type;
@@ -49,6 +50,11 @@ char peek(const Scanner *scanner) {
     return scanner->src[scanner->current];
 }
 
+char peek_next(const Scanner *scanner) {
+    if (scanner->current + 1 > scanner->srclen) return '\0';
+    return scanner->src[scanner->current + 1];
+}
+
 Value string(Scanner *scanner) {
     while (peek(scanner) != '"' && scanner->current <= scanner->srclen) {
         if (peek(scanner) == '\n') scanner->line++;
@@ -67,6 +73,16 @@ Value string(Scanner *scanner) {
     char *val = calloc(len + 1, sizeof(char));
     strncpy(val, scanner->src + scanner->start + 1, len);
     return create_token_value(STR, scanner, from_ptr(val));
+}
+
+Value number(Scanner *scanner) {
+    while (isdigit(peek(scanner))) scanner->current++;
+    if (peek(scanner) == '.' && isdigit(peek_next(scanner))) {
+        scanner->current++;
+        while (isdigit(peek(scanner))) scanner->current++;
+    }
+    double val = strtod(scanner->src + scanner->start, NULL);
+    return create_token_value(NUM, scanner, from_double(val));
 }
 
 List *tokenize(const char *src) {
@@ -121,11 +137,16 @@ List *tokenize(const char *src) {
             break;
         }
         default:
-            error(scan.line, UNEXPECTED_TOKEN, "Unexpected Character");
-            destroy_tokens(tokens);
-            dtor_list(tokens);
-            free(tokens);
-            return 0;
+            if (isdigit(c)) {
+                Value val = number(&scan);
+                append_list(tokens, val);
+            } else {
+                error(scan.line, UNEXPECTED_TOKEN, "Unexpected Character");
+                destroy_tokens(tokens);
+                dtor_list(tokens);
+                free(tokens);
+                return 0;
+            }
         }
     }
 

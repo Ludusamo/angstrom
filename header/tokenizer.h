@@ -63,7 +63,9 @@ void add_token(List *t_list, const Scanner *scanner,
                Token_Type t, const Value literal);
 int match(Scanner *scanner, char t);
 char peek(const Scanner *scanner);
+char peek_next(const Scanner *scanner);
 Value string(Scanner *scanner);
+Value number(Scanner *scanner);
 List *tokenize(const char *src);
 
 void destroy_tokens(List *tokens);
