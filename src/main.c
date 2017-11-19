@@ -2,6 +2,36 @@
 #include "error.h"
 #include "tokenizer.h"
 
+char *getline(void) {
+    char * line = malloc(100), * linep = line;
+    size_t lenmax = 100, len = lenmax;
+    int c;
+
+    if (line == NULL) return NULL;
+
+    for (;;) {
+        c = fgetc(stdin);
+        if (c == EOF)
+            break;
+
+        if (--len == 0) {
+            len = lenmax;
+            char * linen = realloc(linep, lenmax *= 2);
+
+            if (linen == NULL) {
+                free(linep);
+                return NULL;
+            }
+            line = linen + (line - linep);
+            linep = linen;
+        }
+
+        if ((*line++ = c) == '\n') break;
+    }
+    *line = '\0';
+    return linep;
+}
+
 void run(const char *exp) {
     List *tokens = tokenize(exp);
     if (tokens == 0) {
@@ -22,11 +52,12 @@ void run_script(char *file_path) {
 }
 
 void run_repl() {
-    char exp[2048];
+    char *expr;
     for (;;) {
         printf("> ");
-        scanf("%s", exp);
-        run(exp);
+        expr = getline();
+        run(expr);
+        free(expr);
     }
 }
 
