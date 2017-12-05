@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "error.h"
 #include "tokenizer.h"
+#include "ast.h"
 
 char *getline(void) {
     char * line = malloc(100), * linep = line;
@@ -41,6 +42,12 @@ void run(const char *exp) {
     for (size_t i = 0; i < tokens->length; i++) {
         Token *t = get_ptr(access_list(tokens, i));
         print_token(t);
+    }
+    Ast *ast = parse(tokens);
+    if (ast) {
+        print_ast(ast, 0);
+        destroy_ast(ast);
+        free(ast);
     }
     destroy_tokens(tokens);
     dtor_list(tokens);

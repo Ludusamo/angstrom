@@ -158,7 +158,7 @@ List *tokenize(const char *src) {
                 free((void*) lexeme);
                 add_token(tokens, &scan, type, nil_val);
             } else {
-                error(scan.line, UNEXPECTED_TOKEN, "Unexpected Character");
+                error(scan.line, UNEXPECTED_CHARACTER, "Unexpected Character");
                 destroy_tokens(tokens);
                 dtor_list(tokens);
                 free(tokens);

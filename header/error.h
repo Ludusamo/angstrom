@@ -2,8 +2,9 @@
 #define ERROR_H
 
 #define ERROR_LIST(code) \
+    code(UNEXPECTED_CHARACTER) \
     code(UNEXPECTED_TOKEN) \
-    code(UNTERMINATED_STRING)
+    code(UNTERMINATED_STRING) \
 
 #define DEFINE_ENUM_CODE(type) type,
 typedef enum {
