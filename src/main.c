@@ -2,6 +2,7 @@
 #include "error.h"
 #include "tokenizer.h"
 #include "ast.h"
+#include "ang_vm.h"
 
 char *getline(void) {
     char * line = malloc(100), * linep = line;
@@ -69,6 +70,26 @@ void run_repl() {
 }
 
 int main(int argc, char *argv[]) {
+    Memory mem;
+    ctor_memory(&mem, 100);
+
+    for (int i = 0; i < 100; i++) {
+        Ang_Obj *num = new_object(&mem, NUM);
+        num->v = from_double(i);
+        push_stack(&mem, num);
+    }
+    for (int i = 0; i < 50; i++) {
+        pop_stack(&mem);
+    }
+    gc(&mem);
+    printf("Num objects remaining: %zu\n", mem.num_objects);
+    for (int i = 0; i < 50; i++) {
+        pop_stack(&mem);
+    }
+    gc(&mem);
+
+    dtor_memory(&mem);
+
     if (argc > 2) {
         puts("Usage: angstrom [script]");
     } else if (argc == 2) {
