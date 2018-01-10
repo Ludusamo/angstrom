@@ -73,20 +73,24 @@ int main(int argc, char *argv[]) {
     Memory mem;
     ctor_memory(&mem, 100);
 
-    for (int i = 0; i < 100; i++) {
+    printf("Allocating 40 objects\n");
+    for (int i = 0; i < 40; i++) {
         Ang_Obj *num = new_object(&mem, NUM);
         num->v = from_double(i);
         push_stack(&mem, num);
     }
-    for (int i = 0; i < 50; i++) {
+    printf("Removing 15 objects\n");
+    for (int i = 0; i < 15; i++) {
         pop_stack(&mem);
     }
-    gc(&mem);
     printf("Num objects remaining: %zu\n", mem.num_objects);
+    printf("Allocating 50 objects\n");
     for (int i = 0; i < 50; i++) {
-        pop_stack(&mem);
+        Ang_Obj *num = new_object(&mem, NUM);
+        num->v = from_double(i);
+        push_stack(&mem, num);
     }
-    gc(&mem);
+    printf("Num objects remaining: %zu\n", mem.num_objects);
 
     dtor_memory(&mem);
 

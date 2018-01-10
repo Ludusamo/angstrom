@@ -1,6 +1,7 @@
 #include "ang_vm.h"
 
 #include "error.h"
+#include <stdio.h>
 
 void ctor_memory(Memory *mem, size_t gmem_size) {
     mem->gmem = calloc(sizeof(Value*), gmem_size);
@@ -15,6 +16,10 @@ void ctor_memory(Memory *mem, size_t gmem_size) {
 }
 
 void dtor_memory(Memory *mem) {
+    // Set stack pointer and gmem_size to 0 so all objects get collected
+    mem->registers[SP] = 0;
+    mem->gmem_size = 0;
+    gc(mem);
     free(mem->gmem);
     mem->gmem = 0;
 }
