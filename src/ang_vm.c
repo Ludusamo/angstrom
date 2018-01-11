@@ -155,6 +155,24 @@ void eval(Ang_VM *vm) {
         push_num_stack(&vm->mem, left / right);
         break;
     }
+    case ADDF:
+        push_num_stack(&vm->mem, pop_double(&vm->mem) + pop_double(&vm->mem));
+        break;
+    case SUBF: {
+        double right = pop_double(&vm->mem);
+        double left = pop_double(&vm->mem);
+        push_num_stack(&vm->mem, left - right);
+        break;
+    }
+    case MULF:
+        push_num_stack(&vm->mem, pop_double(&vm->mem) * pop_double(&vm->mem));
+        break;
+    case DIVF: {
+        double right = pop_double(&vm->mem);
+        double left = pop_double(&vm->mem);
+        push_num_stack(&vm->mem, left / right);
+        break;
+    }
     }
 }
 

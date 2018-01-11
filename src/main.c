@@ -78,9 +78,9 @@ int main(int argc, char *argv[]) {
     int instr[] = {
         PUSH, 10,
         PUSH, 3,
-        ADD,
+        ADDF,
         PUSH, 4,
-        DIV,
+        DIVF,
         HALT
     };
     for (int i = 0; i < (sizeof(instr) / sizeof(int)); i++) {

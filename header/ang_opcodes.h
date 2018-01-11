@@ -9,6 +9,10 @@
     code(SUB, 0) \
     code(MUL, 0) \
     code(DIV, 0) \
+    code(ADDF, 0) \
+    code(SUBF, 0) \
+    code(MULF, 0) \
+    code(DIVF, 0)
 
 #define DEFINE_ENUM_TYPE(type, _) type,
 typedef enum {
