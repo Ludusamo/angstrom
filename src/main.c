@@ -2,6 +2,8 @@
 #include "error.h"
 #include "tokenizer.h"
 #include "ast.h"
+#include "ang_vm.h"
+#include "ang_opcodes.h"
 
 char *getline(void) {
     char * line = malloc(100), * linep = line;

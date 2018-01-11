@@ -14,3 +14,7 @@ void error(int line, Error_Code c, const char *message) {
     fprintf(stderr, "[line %d] Error %s: %s",
         line, error_code_to_str(c), message);
 }
+
+void runtime_error(Error_Code c, const char *message) {
+    fprintf(stderr, "Runtime Error %s: %s", error_code_to_str(c), message);
+}
