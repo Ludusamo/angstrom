@@ -3,6 +3,7 @@
 
 #include <ang_obj.h>
 #include <stdlib.h>
+#include "list.h"
 
 #define MAX_STACK_SIZE 256
 
@@ -30,10 +31,10 @@ typedef struct {
     Memory mem;
     int running;
     int trace;
-    const int *prog;
+    List prog;
 } Ang_VM;
 
-void ctor_ang_vm(Ang_VM *vm, size_t gmem_size, const int *prog);
+void ctor_ang_vm(Ang_VM *vm, size_t gmem_size);
 void dtor_ang_vm(Ang_VM *vm);
 
 Ang_Obj *new_object(Memory *mem, int type);
@@ -42,11 +43,16 @@ void sweep_mem(Memory *mem);
 void gc(Memory *mem);
 
 int push_stack(Memory *mem, Ang_Obj *obj);
+int push_num_stack(Memory *mem, double d);
+
 Ang_Obj *pop_stack(Memory *mem);
+int32_t pop_int(Memory *mem);
+double pop_double(Memory *mem);
 
-void eval(Ang_VM *vm, int op);
-int fetch(Ang_VM *vm);
+int get_next_op(Ang_VM *vm);
+void eval(Ang_VM *vm);
+int fetch(const Ang_VM *vm);
 
-void runProgram(const int *program, int main_index, size_t gmem_size);
+int emit_op(Ang_VM *vm, int instruction);
 
 #endif // ANG_VM_H

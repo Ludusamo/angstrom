@@ -3,6 +3,7 @@
 #include "tokenizer.h"
 #include "ast.h"
 #include "ang_vm.h"
+#include "ang_opcodes.h"
 
 char *getline(void) {
     char * line = malloc(100), * linep = line;
@@ -70,29 +71,26 @@ void run_repl() {
 }
 
 int main(int argc, char *argv[]) {
-    Memory mem;
-    ctor_memory(&mem, 100);
-
-    printf("Allocating 40 objects\n");
-    for (int i = 0; i < 40; i++) {
-        Ang_Obj *num = new_object(&mem, NUM);
-        num->v = from_double(i);
-        push_stack(&mem, num);
+    Ang_VM vm;
+    ctor_ang_vm(&vm, 100);
+    vm.trace = 1;
+    vm.running = 1;
+    int instr[] = {
+        PUSH, 10,
+        PUSH, 3,
+        ADD,
+        PUSH, 4,
+        DIV,
+        HALT
+    };
+    for (int i = 0; i < (sizeof(instr) / sizeof(int)); i++) {
+        emit_op(&vm, instr[i]);
+        printf("%d\n", access_list(&vm.prog, i).as_int32);
     }
-    printf("Removing 15 objects\n");
-    for (int i = 0; i < 15; i++) {
-        pop_stack(&mem);
-    }
-    printf("Num objects remaining: %zu\n", mem.num_objects);
-    printf("Allocating 50 objects\n");
-    for (int i = 0; i < 50; i++) {
-        Ang_Obj *num = new_object(&mem, NUM);
-        num->v = from_double(i);
-        push_stack(&mem, num);
-    }
-    printf("Num objects remaining: %zu\n", mem.num_objects);
-
-    dtor_memory(&mem);
+    printf("Evaluating test prog\n");
+    printf("%d\n", vm.mem.registers[IP]);
+    while (vm.running) eval(&vm);
+    dtor_ang_vm(&vm);
 
     if (argc > 2) {
         puts("Usage: angstrom [script]");
