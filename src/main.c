@@ -71,27 +71,6 @@ void run_repl() {
 }
 
 int main(int argc, char *argv[]) {
-    Ang_VM vm;
-    ctor_ang_vm(&vm, 100);
-    vm.trace = 1;
-    vm.running = 1;
-    int instr[] = {
-        PUSH, 10,
-        PUSH, 3,
-        ADDF,
-        PUSH, 4,
-        DIVF,
-        HALT
-    };
-    for (int i = 0; i < (sizeof(instr) / sizeof(int)); i++) {
-        emit_op(&vm, instr[i]);
-        printf("%d\n", access_list(&vm.prog, i).as_int32);
-    }
-    printf("Evaluating test prog\n");
-    printf("%d\n", vm.mem.registers[IP]);
-    while (vm.running) eval(&vm);
-    dtor_ang_vm(&vm);
-
     if (argc > 2) {
         puts("Usage: angstrom [script]");
     } else if (argc == 2) {
