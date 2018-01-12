@@ -151,25 +151,26 @@ Ast *parse_unary(Parser *parser) {
         expr->type = UNARY_OP;
         ctor_list(&expr->nodes);
         expr->assoc_token = previous_token(parser);
+        append_list(&expr->nodes, from_ptr(parse_primary(parser)));
         return expr;
     }
     return parse_primary(parser);
 }
 
 Ast *parse_primary(Parser *parser) {
+    if (match_token(parser, LPAREN)) {
+        Ast *expr = parse_expression(parser);
+        consume_token(parser, RPAREN, "Expected \")\" after expression.");
+        parser->enc_err = 1;
+        return expr;
+    }
+
     Ast *literal_node = calloc(1, sizeof(Ast));
     if (match_token(parser, NUM) || match_token(parser, STR)) {
         const Token *t = previous_token(parser);
         literal_node->type = LITERAL;
         ctor_list(&literal_node->nodes);
         literal_node->assoc_token = t;
-    }
-
-    if (match_token(parser, LPAREN)) {
-        Ast *expr = parse_expression(parser);
-        consume_token(parser, RPAREN, "Expected \")\" after expression.");
-        parser->enc_err = 1;
-        return expr;
     }
     return literal_node;
 }

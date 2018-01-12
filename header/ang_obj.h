@@ -12,5 +12,6 @@ struct Ang_Obj {
 };
 
 void mark_ang_obj(Ang_Obj *obj);
+void print_ang_obj(const Ang_Obj *obj);
 
 #endif // ANG_OBJ_H
