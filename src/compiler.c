@@ -34,7 +34,6 @@ void compile_binary_op(Compiler *c, const Ast *code) {
     compile(c, get_child(code, 0));
     compile(c, get_child(code, 1));
 
-    print_token(code->assoc_token);
     switch (code->assoc_token->type) {
     case PLUS:
         append_list(&c->instr, from_double(ADDF));

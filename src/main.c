@@ -59,9 +59,6 @@ void run(const char *exp) {
     Compiler c;
     ctor_compiler(&c);
     compile(&c, ast);
-    for (size_t i = 0; i < c.instr.length; i++) {
-        printf("%d\n", access_list(&c.instr, i).as_int32);
-    }
 
     // Execute
     Ang_VM vm;
@@ -70,7 +67,6 @@ void run(const char *exp) {
     for (size_t i = 0; i < c.instr.length; i++) {
         emit_op(&vm, access_list(&c.instr, i).as_int32);
     }
-    printf("%d\n", vm.mem.registers[IP]);
     while (vm.mem.registers[IP] < vm.prog.length) eval(&vm);
 
     // Cleanup

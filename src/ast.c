@@ -123,7 +123,6 @@ Ast *parse_addition(Parser *parser) {
         ctor_list(&new_expr->nodes);
         append_list(&new_expr->nodes, from_ptr(expr));
         append_list(&new_expr->nodes, from_ptr(parse_multiplication(parser)));
-        print_token(new_expr->assoc_token);
         expr = new_expr;
     }
 
@@ -182,19 +181,6 @@ Ast *parse(const List *tokens) {
     ctor_list(&prog->nodes);
 
     append_list(&prog->nodes, from_ptr(parse_expression(&parser)));
-    /*while (!at_end(&parser)) {
-        print_token(peek_token(&parser));
-            
-        } else {
-            char error_message[255] = "Unexpected Token: ";
-            strcat(error_message, peek_token(&parser)->lexeme);
-            error(peek_token(&parser)->line, UNEXPECTED_TOKEN, error_message);
-            destroy_ast(prog);
-            free(prog);
-            return 0;
-        }
-    }*/
-
     return prog;
 }
 
