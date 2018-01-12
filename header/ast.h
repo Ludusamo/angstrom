@@ -56,4 +56,6 @@ void destroy_ast(Ast *ast);
 
 Ast *parse(const List *tokens);
 
+Ast *get_child(const Ast *ast, int child_i);
+
 #endif // AST_H

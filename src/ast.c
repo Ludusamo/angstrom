@@ -86,10 +86,10 @@ Ast *parse_equality(Parser *parser) {
     while (match_token(parser, NEQ) || match_token(parser, EQ_EQ)) {
         Ast *new_expr = calloc(1, sizeof(Ast));
         new_expr->type = EQ_OP;
+        new_expr->assoc_token = previous_token(parser);
         ctor_list(&new_expr->nodes);
         append_list(&new_expr->nodes, from_ptr(expr));
         append_list(&new_expr->nodes, from_ptr(parse_comparison(parser)));
-        new_expr->assoc_token = previous_token(parser);
         expr = new_expr;
     }
 
@@ -103,10 +103,10 @@ Ast *parse_comparison(Parser *parser) {
             || match_token(parser, GTE) || match_token(parser, LTE)) {
         Ast *new_expr = calloc(1, sizeof(Ast));
         new_expr->type = COMP_OP;
+        new_expr->assoc_token = previous_token(parser);
         ctor_list(&new_expr->nodes);
         append_list(&new_expr->nodes, from_ptr(expr));
         append_list(&new_expr->nodes, from_ptr(parse_addition(parser)));
-        new_expr->assoc_token = previous_token(parser);
         expr = new_expr;
     }
 
@@ -119,10 +119,11 @@ Ast *parse_addition(Parser *parser) {
     while (match_token(parser, PLUS) || match_token(parser, MINUS)) {
         Ast *new_expr = calloc(1, sizeof(Ast));
         new_expr->type = ADD_OP;
+        new_expr->assoc_token = previous_token(parser);
         ctor_list(&new_expr->nodes);
         append_list(&new_expr->nodes, from_ptr(expr));
         append_list(&new_expr->nodes, from_ptr(parse_multiplication(parser)));
-        new_expr->assoc_token = previous_token(parser);
+        print_token(new_expr->assoc_token);
         expr = new_expr;
     }
 
@@ -135,10 +136,10 @@ Ast *parse_multiplication(Parser *parser) {
     while (match_token(parser, STAR) || match_token(parser, SLASH)) {
         Ast *new_expr = calloc(1, sizeof(Ast));
         new_expr->type = MUL_OP;
+        new_expr->assoc_token = previous_token(parser);
         ctor_list(&new_expr->nodes);
         append_list(&new_expr->nodes, from_ptr(expr));
         append_list(&new_expr->nodes, from_ptr(parse_unary(parser)));
-        new_expr->assoc_token = previous_token(parser);
         expr = new_expr;
     }
 
@@ -195,4 +196,8 @@ Ast *parse(const List *tokens) {
     }*/
 
     return prog;
+}
+
+Ast *get_child(const Ast *ast, int child_i) {
+    return get_ptr(access_list(&ast->nodes, child_i));
 }
