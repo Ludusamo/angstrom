@@ -29,6 +29,7 @@
     code(IDENT) \
     code(STR) \
     code(NUM) \
+    code(VAR) \
     code(FUNC) \
     code(RET) \
     code(TEOF)

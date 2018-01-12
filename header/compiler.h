@@ -3,10 +3,13 @@
 
 #include "ast.h"
 #include "hashtable.h"
+#include "ang_env.h"
 
 typedef struct {
     List instr;
     int enc_err;
+
+    Ang_Env *env;
 } Compiler;
 
 void ctor_compiler(Compiler *compiler);

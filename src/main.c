@@ -54,28 +54,31 @@ void run(const char *exp) {
     if (ast) {
         print_ast(ast, 0);
     }
+    if (!parser.enc_err) {
 
-    // Compile
-    Compiler c;
-    ctor_compiler(&c);
-    compile(&c, ast);
+        // Compile
+        Compiler c;
+        ctor_compiler(&c);
+        compile(&c, ast);
 
-    // Execute
-    Ang_VM vm;
-    ctor_ang_vm(&vm, 100);
-    vm.trace = 1;
-    for (size_t i = 0; i < c.instr.length; i++) {
-        emit_op(&vm, access_list(&c.instr, i).as_int32);
+        // Execute
+        Ang_VM vm;
+        ctor_ang_vm(&vm, 100);
+        vm.trace = 1;
+        for (size_t i = 0; i < c.instr.length; i++) {
+            emit_op(&vm, access_list(&c.instr, i).as_int32);
+        }
+        while (vm.mem.registers[IP] < vm.prog.length) eval(&vm);
+        Ang_Obj *result = pop_stack(&vm.mem);
+        print_ang_obj(result);
+
+        dtor_ang_vm(&vm);
+        dtor_compiler(&c);
+        destroy_ast(ast);
+        free(ast);
     }
-    while (vm.mem.registers[IP] < vm.prog.length) eval(&vm);
-    Ang_Obj *result = pop_stack(&vm.mem);
-    print_ang_obj(result);
 
     // Cleanup
-    dtor_ang_vm(&vm);
-    dtor_compiler(&c);
-    destroy_ast(ast);
-    free(ast);
     destroy_tokens(tokens);
     dtor_list(tokens);
     free(tokens);

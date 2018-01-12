@@ -11,7 +11,8 @@
     code(COMP_OP) \
     code(ADD_OP) \
     code(MUL_OP) \
-    code(UNARY_OP)
+    code(UNARY_OP) \
+    code(VAR_DECL)
 
 #define DEFINE_ENUM_TYPE(type) type,
 typedef enum {
@@ -50,6 +51,7 @@ Ast *parse_comparison(Parser *parser);
 Ast *parse_addition(Parser *parser);
 Ast *parse_multiplication(Parser *parser);
 Ast *parse_unary(Parser *parser);
+Ast *parse_decl(Parser *parser);
 Ast *parse_primary(Parser *parser);
 Ast *parse_literal(Parser *parser);
 void destroy_ast(Ast *ast);
