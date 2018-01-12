@@ -68,6 +68,8 @@ void run(const char *exp) {
         emit_op(&vm, access_list(&c.instr, i).as_int32);
     }
     while (vm.mem.registers[IP] < vm.prog.length) eval(&vm);
+    Ang_Obj *result = pop_stack(&vm.mem);
+    print_ang_obj(result);
 
     // Cleanup
     dtor_ang_vm(&vm);
