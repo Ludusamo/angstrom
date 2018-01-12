@@ -22,8 +22,23 @@ void compile(Compiler *c, const Ast *code) {
     case MUL_OP:
         compile_binary_op(c, code);
         break;
+    case UNARY_OP:
+        compile_unary_op(c, code);
+        break;
     case LITERAL:
         compile_literal(c, code);
+        break;
+    default:
+        break;
+    }
+}
+
+void compile_unary_op(Compiler *c, const Ast *code) {
+    switch (code->assoc_token->type) {
+    case MINUS:
+        append_list(&c->instr, from_double(PUSH_0));
+        compile(c, get_child(code, 0));
+        append_list(&c->instr, from_double(SUBF));
         break;
     default:
         break;

@@ -21,9 +21,7 @@ void print_stack_trace(const Ang_VM *vm) {
     }
     fprintf(stderr, "%*s", lenOffset, "[ ");
     for (int i = 0; i < sp; i++) {
-        if (is_ptr(vm->mem.stack[i]->v))
-            fprintf(stderr, "%lu ", vm->mem.stack[i]->v.bits);
-        else if (is_double(vm->mem.stack[i]->v))
+        if (is_double(vm->mem.stack[i]->v))
             fprintf(stderr, "%.2lf ", vm->mem.stack[i]->v.as_double);
         else
             fprintf(stderr, "%d ", vm->mem.stack[i]->v.as_int32);

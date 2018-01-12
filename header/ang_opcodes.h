@@ -4,6 +4,7 @@
 #define OPCODES(code) \
     code(HALT, 0) \
     code(PUSH, 1) \
+    code(PUSH_0, 0) \
     code(POP, 0) \
     code(ADD, 0) \
     code(SUB, 0) \
