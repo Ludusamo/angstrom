@@ -151,6 +151,7 @@ Ast *parse_unary(Parser *parser) {
         expr->type = UNARY_OP;
         ctor_list(&expr->nodes);
         expr->assoc_token = previous_token(parser);
+        append_list(&expr->nodes, from_ptr(parse_primary(parser)));
         return expr;
     }
     return parse_primary(parser);
