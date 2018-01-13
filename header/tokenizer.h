@@ -13,6 +13,7 @@
     code(LBRACK) \
     code(RBRACK) \
     code(COMMA) \
+    code(COLON) \
     code(DOT) \
     code(MINUS) \
     code(PLUS) \
