@@ -103,3 +103,12 @@ void push_num_stack(Ang_VM *vm, double num) {
     obj->v = from_double(num);
     push_stack(&vm->mem, obj);
 }
+
+void run_compiled_instructions(Ang_VM *vm, Compiler *c) {
+    vm->compiler = c;
+    int last_op = 0;
+    for (size_t i = 0; i < c->instr.length; i++) {
+        last_op = emit_op(vm, access_list(&c->instr, i).as_int32);
+    }
+    while (vm->mem.registers[IP] < last_op) eval(vm);
+}

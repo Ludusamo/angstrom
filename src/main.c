@@ -71,11 +71,8 @@ void run(const char *exp) {
         Ang_VM vm;
         ctor_ang_vm(&vm, 100);
         vm.trace = 1;
-        vm.compiler = &c;
-        for (size_t i = 0; i < c.instr.length; i++) {
-            emit_op(&vm, access_list(&c.instr, i).as_int32);
-        }
-        while (vm.mem.registers[IP] < vm.prog.length) eval(&vm);
+        run_compiled_instructions(&vm, &c);
+
         Ang_Obj *result = pop_stack(&vm.mem);
         print_ang_obj(result);
 

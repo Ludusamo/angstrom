@@ -112,7 +112,7 @@ void compile_decl(Compiler *c, const Ast *code) {
     }
     if (!has_assignment) {
         append_list(&c->instr, from_double(PUSH));
-        append_list(&c->instr, type->default_value);
+        append_list(&c->instr, from_double(0));
     }
     int loc = c->env.symbols.size;
     create_symbol(&c->env, sym, type, loc);

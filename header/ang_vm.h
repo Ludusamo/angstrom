@@ -27,4 +27,6 @@ int emit_op(Ang_VM *vm, int instruction);
 
 void push_num_stack(Ang_VM *vm, double num);
 
+void run_compiled_instructions(Ang_VM *vm, Compiler *c);
+
 #endif // ANG_VM_H
