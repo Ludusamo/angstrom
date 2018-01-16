@@ -2,9 +2,10 @@
 #define PRIMITIVES_H
 
 #define PRIMITIVES(code) \
-    code(NUM) \
-    code(BOOL) \
-    code(STRING)
+    code(UNDECLARED) \
+    code(NUM_TYPE) \
+    code(BOOL_TYPE) \
+    code(STRING_TYPE)
 
 #define DEFINE_ENUM_TYPE(type) type,
 typedef enum {

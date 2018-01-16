@@ -6,7 +6,9 @@
     code(UNEXPECTED_TOKEN) \
     code(UNTERMINATED_STRING) \
     code(STACK_OVERFLOW) \
-    code(STACK_UNDERFLOW)
+    code(STACK_UNDERFLOW) \
+    code(NAME_COLLISION) \
+    code(UNKNOWN_TYPE)
 
 #define DEFINE_ENUM_CODE(type) type,
 typedef enum {

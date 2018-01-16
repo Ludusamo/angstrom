@@ -165,6 +165,13 @@ Ast *parse_decl(Parser *parser) {
             expr->type = VAR_DECL;
             expr->assoc_token = previous_token(parser);
             ctor_list(&expr->nodes);
+
+            if (match_token(parser, EQ)) {
+                append_list(&expr->nodes, from_ptr(parse_expression(parser)));
+            }
+            if (match_token(parser, COLON)) {
+                append_list(&expr->nodes, from_ptr(parse_type(parser)));
+            }
             return expr;
         } else {
             int lineno = peek_token(parser)->line;
@@ -175,6 +182,23 @@ Ast *parse_decl(Parser *parser) {
         }
     }
     return parse_primary(parser);
+}
+
+Ast *parse_type(Parser *parser) {
+    if (match_token(parser, IDENT)) {
+        Ast *expr = calloc(1, sizeof(Ast));
+        expr->type = TYPE_DECL;
+        expr->assoc_token = previous_token(parser);
+        ctor_list(&expr->nodes);
+        return expr;
+    } else {
+        int lineno = peek_token(parser)->line;
+        error(lineno, UNEXPECTED_TOKEN, "Expected type identifier.");
+        printf("\n");
+        parser->enc_err = 1;
+        synchronize(parser);
+    }
+    return 0;
 }
 
 Ast *parse_primary(Parser *parser) {

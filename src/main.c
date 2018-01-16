@@ -5,6 +5,7 @@
 #include "ang_vm.h"
 #include "ang_opcodes.h"
 #include "compiler.h"
+#include "ang_primitives.h"
 
 char *getline(void) {
     char * line = malloc(100), * linep = line;
@@ -59,6 +60,7 @@ void run(const char *exp) {
         // Compile
         Compiler c;
         ctor_compiler(&c);
+        set_hashtable(&c.env.types, "int", from_double(NUM_TYPE));
         compile(&c, ast);
 
         // Execute

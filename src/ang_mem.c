@@ -5,8 +5,11 @@
 
 void ctor_memory(Memory *mem, size_t gmem_size) {
     mem->gmem = calloc(sizeof(Value*), gmem_size);
+    mem->localmem = calloc(sizeof(Value*), MAX_LOCALS);
     mem->gmem_size = gmem_size;
+    mem->localmem_size = MAX_LOCALS;
     mem->global_size = 0;
+    mem->local_size = 0;
     mem->num_objects = 0;
     mem->max_objects = 50; // Arbitrary currently
     mem->mem_head = 0;
@@ -18,6 +21,7 @@ void ctor_memory(Memory *mem, size_t gmem_size) {
 void dtor_memory(Memory *mem) {
     // Set stack pointer and gmem_size to 0 so all objects get collected
     mem->registers[SP] = 0;
+    mem->local_size = 0;
     mem->gmem_size = 0;
     gc(mem);
     free(mem->gmem);
@@ -39,6 +43,9 @@ Ang_Obj *new_object(Memory *mem, int type) {
 void mark_all_objects(Memory *mem) {
     for (int i = 0; i < mem->registers[SP]; i++) {
         mark_ang_obj(mem->stack[i]);
+    }
+    for (size_t i = 0; i < mem->global_size; i++) {
+        mark_ang_obj(mem->localmem[i]);
     }
     for (size_t i = 0; i < mem->global_size; i++) {
         mark_ang_obj(mem->gmem[i]);
@@ -76,7 +83,7 @@ int push_stack(Memory *mem, Ang_Obj *obj) {
 }
 
 int push_num_stack(Memory *mem, double d) {
-    Ang_Obj *obj = new_object(mem, NUM);
+    Ang_Obj *obj = new_object(mem, NUM_TYPE);
     obj->v = from_double(d);
     push_stack(mem, obj);
     return 1;

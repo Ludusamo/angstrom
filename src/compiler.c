@@ -2,13 +2,18 @@
 
 #include "ang_opcodes.h"
 #include <stdio.h>
+#include "error.h"
+#include "ang_primitives.h"
 
 void ctor_compiler(Compiler *compiler) {
     ctor_list(&compiler->instr);
+    ctor_ang_env(&compiler->env);
     compiler->enc_err = 0;
+    compiler->parent = 0;
 }
 
 void dtor_compiler(Compiler *compiler) {
+    dtor_ang_env(&compiler->env);
     dtor_list(&compiler->instr);
 }
 
@@ -27,6 +32,9 @@ void compile(Compiler *c, const Ast *code) {
         break;
     case LITERAL:
         compile_literal(c, code);
+        break;
+    case VAR_DECL:
+        compile_decl(c, code);
         break;
     default:
         break;
@@ -76,4 +84,60 @@ void compile_literal(Compiler *c, const Ast *code) {
     //TODO: Handle Strings
     append_list(&c->instr, from_double(PUSH));
     append_list(&c->instr, literal);
+}
+
+void compile_decl(Compiler *c, const Ast *code) {
+    const char *sym = code->assoc_token->lexeme;
+    printf("Declaring %s\n", sym);
+    if (symbol_exists(&c->env, sym)) {
+        error(code->assoc_token->line, NAME_COLLISION, sym);
+        c->enc_err = 1;
+        return;
+    }
+    int type = UNDECLARED;
+    int has_assignment = 0;
+    for (size_t i = 0; i < code->nodes.length; i++) {
+        Ast *child = get_child(code, i);
+        if (child->type == TYPE_DECL) {
+            const char *type_sym = child->assoc_token->lexeme;
+            type = find_type(c, type_sym);
+            if (type == -1) {
+                error(child->assoc_token->line, UNKNOWN_TYPE, type_sym);
+                c->enc_err = 1;
+            }
+        } else {
+            has_assignment = 1;
+            compile(c, child);
+        }
+    }
+    if (!has_assignment) {
+        append_list(&c->instr, from_double(PUSH));
+        append_list(&c->instr, from_double(0));
+    }
+    int loc = c->env.symbols.size;
+    create_symbol(&c->env, sym, type, loc);
+
+    int local = c->parent != 0; // If the variable is global or local
+    append_list(&c->instr, from_double(local ? STORE : GSTORE));
+    append_list(&c->instr, from_double(loc));
+    append_list(&c->instr, from_double(local ? LOAD : GLOAD));
+    append_list(&c->instr, from_double(loc));
+}
+
+const Symbol *find_symbol(const Compiler *c, const char *sym) {
+    if (!c) return 0;
+    Value symbol = access_hashtable(&c->env.symbols, sym);
+    if (symbol.bits != nil_val.bits) {
+        return get_ptr(symbol);
+    }
+    return find_symbol(c->parent, sym);
+}
+
+int find_type(const Compiler *c, const char *sym) {
+    if (!c) return -1;
+    Value type = access_hashtable(&c->env.types, sym);
+    if (type.bits != nil_val.bits) {
+        return type.as_int32;
+    }
+    return find_type(c->parent, sym);
 }

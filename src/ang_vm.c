@@ -75,6 +75,17 @@ void eval(Ang_VM *vm) {
         push_num_stack(&vm->mem, left / right);
         break;
     }
+    case GSTORE:
+        vm->mem.gmem[get_next_op(vm)] = pop_stack(&vm->mem);
+        break;
+    case GLOAD:
+        push_stack(&vm->mem, vm->mem.gmem[get_next_op(vm)]);
+        break;
+    case STORE:
+        break;
+    case LOAD:
+        push_stack(&vm->mem, vm->mem.stack[vm->mem.registers[FP] + get_next_op(vm)]);
+        break;
     }
 }
 

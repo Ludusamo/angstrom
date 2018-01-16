@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #define MAX_STACK_SIZE 256
+#define MAX_LOCALS 256
 
 typedef enum {
     A, B, C, D, IP, SP, FP, NUM_REGISTERS
@@ -12,6 +13,10 @@ typedef enum {
 
 typedef struct {
     Ang_Obj *stack[MAX_STACK_SIZE];
+
+    size_t localmem_size;
+    size_t local_size;
+    Ang_Obj **localmem;
 
     size_t gmem_size;
     size_t global_size;
