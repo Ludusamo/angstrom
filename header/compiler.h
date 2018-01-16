@@ -26,6 +26,6 @@ void compile_literal(Compiler *c, const Ast *code);
 void compile_decl(Compiler *c, const Ast *code);
 
 const Symbol *find_symbol(const Compiler *c, const char *sym);
-int find_type(const Compiler *c, const char *sym);
+Ang_Type *find_type(const Compiler *c, const char *sym);
 
 #endif // COMPILER_H

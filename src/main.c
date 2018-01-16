@@ -4,6 +4,7 @@
 #include "ast.h"
 #include "ang_vm.h"
 #include "ang_opcodes.h"
+#include "ang_type.h"
 #include "compiler.h"
 #include "ang_primitives.h"
 
@@ -60,13 +61,17 @@ void run(const char *exp) {
         // Compile
         Compiler c;
         ctor_compiler(&c);
-        set_hashtable(&c.env.types, "int", from_double(NUM_TYPE));
+        Ang_Type und = primitive_ang_type(UNDECLARED);
+        set_hashtable(&c.env.types, "undeclared", from_ptr(&und));
+        Ang_Type num = primitive_ang_type(NUM_TYPE);
+        set_hashtable(&c.env.types, "num", from_ptr(&num));
         compile(&c, ast);
 
         // Execute
         Ang_VM vm;
         ctor_ang_vm(&vm, 100);
         vm.trace = 1;
+        vm.compiler = &c;
         for (size_t i = 0; i < c.instr.length; i++) {
             emit_op(&vm, access_list(&c.instr, i).as_int32);
         }

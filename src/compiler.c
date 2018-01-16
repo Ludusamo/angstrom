@@ -94,14 +94,14 @@ void compile_decl(Compiler *c, const Ast *code) {
         c->enc_err = 1;
         return;
     }
-    int type = UNDECLARED;
+    Ang_Type *type = find_type(c, "undeclared");
     int has_assignment = 0;
     for (size_t i = 0; i < code->nodes.length; i++) {
         Ast *child = get_child(code, i);
         if (child->type == TYPE_DECL) {
             const char *type_sym = child->assoc_token->lexeme;
             type = find_type(c, type_sym);
-            if (type == -1) {
+            if (!type) {
                 error(child->assoc_token->line, UNKNOWN_TYPE, type_sym);
                 c->enc_err = 1;
             }
@@ -112,7 +112,7 @@ void compile_decl(Compiler *c, const Ast *code) {
     }
     if (!has_assignment) {
         append_list(&c->instr, from_double(PUSH));
-        append_list(&c->instr, from_double(0));
+        append_list(&c->instr, type->default_value);
     }
     int loc = c->env.symbols.size;
     create_symbol(&c->env, sym, type, loc);
@@ -133,11 +133,11 @@ const Symbol *find_symbol(const Compiler *c, const char *sym) {
     return find_symbol(c->parent, sym);
 }
 
-int find_type(const Compiler *c, const char *sym) {
-    if (!c) return -1;
+Ang_Type *find_type(const Compiler *c, const char *sym) {
+    if (!c) return 0;
     Value type = access_hashtable(&c->env.types, sym);
     if (type.bits != nil_val.bits) {
-        return type.as_int32;
+        return get_ptr(type);
     }
     return find_type(c->parent, sym);
 }

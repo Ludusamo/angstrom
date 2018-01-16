@@ -14,10 +14,6 @@ typedef enum {
 typedef struct {
     Ang_Obj *stack[MAX_STACK_SIZE];
 
-    size_t localmem_size;
-    size_t local_size;
-    Ang_Obj **localmem;
-
     size_t gmem_size;
     size_t global_size;
     Ang_Obj **gmem;
@@ -31,13 +27,12 @@ typedef struct {
 void ctor_memory(Memory *mem, size_t gmem_size);
 void dtor_memory(Memory *mem);
 
-Ang_Obj *new_object(Memory *mem, int type);
+Ang_Obj *new_object(Memory *mem, Ang_Type *type);
 void mark_all_objects(Memory *mem);
 void sweep_mem(Memory *mem);
 void gc(Memory *mem);
 
 int push_stack(Memory *mem, Ang_Obj *obj);
-int push_num_stack(Memory *mem, double d);
 
 Ang_Obj *pop_stack(Memory *mem);
 int32_t pop_int(Memory *mem);

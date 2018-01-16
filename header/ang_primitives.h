@@ -1,6 +1,8 @@
 #ifndef PRIMITIVES_H
 #define PRIMITIVES_H
 
+#include "ang_type.h"
+
 #define PRIMITIVES(code) \
     code(UNDECLARED) \
     code(NUM_TYPE) \
@@ -12,5 +14,7 @@ typedef enum {
     PRIMITIVES(DEFINE_ENUM_TYPE)
 } Primitive_Type;
 #undef DEFINE_ENUM_TYPE
+
+Ang_Type primitive_ang_type(int id);
 
 #endif // PRIMITIVES_H

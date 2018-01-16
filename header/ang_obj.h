@@ -2,11 +2,13 @@
 #define ANG_OBJ_H
 
 #include "value.h"
+#include "ang_type.h"
+
 
 typedef struct Ang_Obj Ang_Obj;
 struct Ang_Obj {
     Value v;
-    int type;
+    const Ang_Type *type;
     int marked;
     Ang_Obj *next;
 };
