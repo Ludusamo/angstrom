@@ -241,6 +241,14 @@ Ast *parse_primary(Parser *parser) {
         return literal_node;
     }
 
+    if (match_token(parser, IDENT)) {
+        Ast *var_node = calloc(1, sizeof(Ast));
+        var_node->type = VARIABLE;
+        var_node->assoc_token = previous_token(parser);
+        ctor_list(&var_node->nodes);
+        return var_node;
+    }
+
     int lineno = peek_token(parser)->line;
     error(lineno, UNEXPECTED_TOKEN, "Encountered unknown token.\n");
     parser->enc_err = 1;
