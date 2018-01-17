@@ -8,6 +8,7 @@
 #define AST_TYPE_LIST(code) \
     code(PROG) \
     code(LITERAL) \
+    code(BLOCK) \
     code(EQ_OP) \
     code(COMP_OP) \
     code(ADD_OP) \
@@ -56,6 +57,7 @@ Ast *parse_multiplication(Parser *parser);
 Ast *parse_unary(Parser *parser);
 Ast *parse_decl(Parser *parser);
 Ast *parse_type(Parser *parser);
+Ast *parse_block(Parser *parser);
 Ast *parse_primary(Parser *parser);
 Ast *parse_literal(Parser *parser);
 void destroy_ast(Ast *ast);
