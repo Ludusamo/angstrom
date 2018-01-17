@@ -36,6 +36,9 @@ void compile(Compiler *c, Ast *code) {
     case VAR_DECL:
         compile_decl(c, code);
         break;
+    case BLOCK:
+        compile_block(c, code);
+        break;
     default:
         break;
     }
@@ -63,6 +66,7 @@ void compile_binary_op(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
     compile(c, get_child(code, 1));
 
+    printf("hi\n");
     code->eval_type = find_type(c, "num");
     if (get_child(code, 0)->eval_type->id != NUM_TYPE ||
             get_child(code, 1)->eval_type->id != NUM_TYPE) {
@@ -150,6 +154,20 @@ void compile_decl(Compiler *c, Ast *code) {
     append_list(&c->instr, from_double(loc));
     append_list(&c->instr, from_double(local ? LOAD : GLOAD));
     append_list(&c->instr, from_double(loc));
+}
+
+void compile_block(Compiler *c, Ast *code) {
+    Compiler block;
+    ctor_compiler(&block);
+    block.parent = c;
+    for (size_t i = 0; i < code->nodes.length; i++) {
+        compile(&block, get_child(code, i));
+        append_list(&block.instr, from_double(POP));
+    }
+    for (size_t i = 0; i < block.instr.length; i++) {
+        append_list(&c->instr, access_list(&block.instr, i));
+    }
+    dtor_compiler(&block);
 }
 
 const Symbol *find_symbol(const Compiler *c, const char *sym) {

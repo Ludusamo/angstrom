@@ -203,7 +203,6 @@ Ast *parse_type(Parser *parser) {
 }
 
 Ast *parse_block(Parser *parser) {
-    printf("parsing block\n");
     if (match_token(parser, LBRACE)) {
         Ast *expr = calloc(1, sizeof(Ast));
         expr->type = BLOCK;
