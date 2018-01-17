@@ -48,6 +48,7 @@ const Token *consume_token(Parser *parser, Token_Type type, const char *err) {
         return advance_token(parser);
     }
     error(peek_token(parser)->line, UNEXPECTED_TOKEN, err);
+    parser->enc_err = 1;
     return 0;
 }
 
@@ -205,7 +206,6 @@ Ast *parse_primary(Parser *parser) {
     if (match_token(parser, LPAREN)) {
         Ast *expr = parse_expression(parser);
         consume_token(parser, RPAREN, "Expected \")\" after expression.");
-        parser->enc_err = 1;
         return expr;
     }
 
@@ -220,7 +220,6 @@ Ast *parse_primary(Parser *parser) {
 
     int lineno = peek_token(parser)->line;
     error(lineno, UNEXPECTED_TOKEN, "Encountered unknown token.");
-    printf("\n");
     parser->enc_err = 1;
     synchronize(parser);
     return 0;

@@ -8,7 +8,8 @@
     code(STACK_OVERFLOW) \
     code(STACK_UNDERFLOW) \
     code(NAME_COLLISION) \
-    code(UNKNOWN_TYPE)
+    code(UNKNOWN_TYPE) \
+    code(TYPE_ERROR)
 
 #define DEFINE_ENUM_CODE(type) type,
 typedef enum {

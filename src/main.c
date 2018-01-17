@@ -65,18 +65,22 @@ void run(const char *exp) {
         set_hashtable(&c.env.types, "undeclared", from_ptr(&und));
         Ang_Type num = primitive_ang_type(NUM_TYPE);
         set_hashtable(&c.env.types, "num", from_ptr(&num));
+        Ang_Type bool = primitive_ang_type(BOOL_TYPE);
+        set_hashtable(&c.env.types, "bool", from_ptr(&bool));
         compile(&c, ast);
 
-        // Execute
-        Ang_VM vm;
-        ctor_ang_vm(&vm, 100);
-        vm.trace = 1;
-        run_compiled_instructions(&vm, &c);
+        if (!c.enc_err) {
+            // Execute
+            Ang_VM vm;
+            ctor_ang_vm(&vm, 100);
+            vm.trace = 1;
+            run_compiled_instructions(&vm, &c);
 
-        Ang_Obj *result = pop_stack(&vm.mem);
-        print_ang_obj(result);
+            Ang_Obj *result = pop_stack(&vm.mem);
+            print_ang_obj(result);
 
-        dtor_ang_vm(&vm);
+            dtor_ang_vm(&vm);
+        }
         dtor_compiler(&c);
         destroy_ast(ast);
         free(ast);

@@ -3,6 +3,7 @@
 
 #include <list.h>
 #include "tokenizer.h"
+#include "ang_type.h"
 
 #define AST_TYPE_LIST(code) \
     code(PROG) \
@@ -25,6 +26,7 @@ typedef struct {
     Ast_Type type;
     List nodes;
     const Token *assoc_token;
+    Ang_Type *eval_type;
 } Ast;
 
 typedef struct {

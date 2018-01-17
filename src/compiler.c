@@ -17,7 +17,7 @@ void dtor_compiler(Compiler *compiler) {
     dtor_list(&compiler->instr);
 }
 
-void compile(Compiler *c, const Ast *code) {
+void compile(Compiler *c, Ast *code) {
     switch (code->type) {
     case PROG:
         for (int i = 0; i < code->nodes.length; i++)
@@ -41,9 +41,15 @@ void compile(Compiler *c, const Ast *code) {
     }
 }
 
-void compile_unary_op(Compiler *c, const Ast *code) {
+void compile_unary_op(Compiler *c, Ast *code) {
     switch (code->assoc_token->type) {
     case MINUS:
+        if (get_child(code, 0)->eval_type->id != NUM) {
+            error(code->assoc_token->line,
+                    TYPE_ERROR,
+                    "Cannot do unary '-' operations on non-numbers.\n");
+        }
+        code->eval_type = find_type(c, "num");
         append_list(&c->instr, from_double(PUSH_0));
         compile(c, get_child(code, 0));
         append_list(&c->instr, from_double(SUBF));
@@ -53,9 +59,19 @@ void compile_unary_op(Compiler *c, const Ast *code) {
     }
 }
 
-void compile_binary_op(Compiler *c, const Ast *code) {
+void compile_binary_op(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
     compile(c, get_child(code, 1));
+
+    code->eval_type = find_type(c, "num");
+    if (get_child(code, 0)->eval_type->id != NUM_TYPE ||
+            get_child(code, 1)->eval_type->id != NUM_TYPE) {
+        error(code->assoc_token->line,
+                TYPE_ERROR,
+                "Cannot do binary operations on non-numbers.\n");
+        c->enc_err = 1;
+        return;
+    }
 
     switch (code->assoc_token->type) {
     case PLUS:
@@ -75,20 +91,24 @@ void compile_binary_op(Compiler *c, const Ast *code) {
     }
 }
 
-void compile_grouping(Compiler *c, const Ast *code) {
+void compile_grouping(Compiler *c, Ast *code) {
     compile(c, code);
 }
 
-void compile_literal(Compiler *c, const Ast *code) {
+void compile_literal(Compiler *c, Ast *code) {
     Value literal = code->assoc_token->literal;
+    if (code->assoc_token->type == NUM) {
+        code->eval_type = find_type(c, "num");
+    } else if (code->assoc_token->type == STR) {
+        code->eval_type = find_type(c, "string");
+    }
     //TODO: Handle Strings
     append_list(&c->instr, from_double(PUSH));
     append_list(&c->instr, literal);
 }
 
-void compile_decl(Compiler *c, const Ast *code) {
+void compile_decl(Compiler *c, Ast *code) {
     const char *sym = code->assoc_token->lexeme;
-    printf("Declaring %s\n", sym);
     if (symbol_exists(&c->env, sym)) {
         error(code->assoc_token->line, NAME_COLLISION, sym);
         c->enc_err = 1;
@@ -103,7 +123,9 @@ void compile_decl(Compiler *c, const Ast *code) {
             type = find_type(c, type_sym);
             if (!type) {
                 error(child->assoc_token->line, UNKNOWN_TYPE, type_sym);
+                fprintf(stderr, "\n");
                 c->enc_err = 1;
+                return;
             }
         } else {
             has_assignment = 1;
@@ -113,6 +135,12 @@ void compile_decl(Compiler *c, const Ast *code) {
     if (!has_assignment) {
         append_list(&c->instr, from_double(PUSH));
         append_list(&c->instr, from_double(0));
+    } else {
+        if (type->id == UNDECLARED)
+            type = get_child(code, 0)->eval_type;
+        if (type != get_child(code, 0)->eval_type) {
+            error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
+        }
     }
     int loc = c->env.symbols.size;
     create_symbol(&c->env, sym, type, loc);
