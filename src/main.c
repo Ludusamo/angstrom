@@ -82,11 +82,11 @@ void run(const char *exp) {
             dtor_ang_vm(&vm);
         }
         dtor_compiler(&c);
-        destroy_ast(ast);
-        free(ast);
     }
 
     // Cleanup
+    destroy_ast(ast);
+    free(ast);
     destroy_tokens(tokens);
     dtor_list(tokens);
     free(tokens);

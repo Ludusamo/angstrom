@@ -11,8 +11,8 @@ int num_digits(int num) {
 
 void print_stack_trace(const Ang_VM *vm) {
     int op = fetch(vm);
-    int ip = vm->mem.registers[IP];
-    int sp = vm->mem.registers[SP];
+    int ip = vm->mem.ip;
+    int sp = vm->mem.sp;
     int lenOffset = 20 - strlen(opcode_to_str(op)) - num_ops(op); // Length necessary to offset stack print.
     fprintf(stderr, "%04d: %s ", ip, opcode_to_str(op));
     for (int i = 0; i < num_ops(op); i++) {

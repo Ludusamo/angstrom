@@ -9,7 +9,8 @@
     code(STACK_UNDERFLOW) \
     code(NAME_COLLISION) \
     code(UNKNOWN_TYPE) \
-    code(TYPE_ERROR)
+    code(TYPE_ERROR) \
+    code(UNCLOSED_BLOCK)
 
 #define DEFINE_ENUM_CODE(type) type,
 typedef enum {

@@ -36,6 +36,9 @@ void compile(Compiler *c, Ast *code) {
     case VAR_DECL:
         compile_decl(c, code);
         break;
+    case BLOCK:
+        compile_block(c, code);
+        break;
     default:
         break;
     }
@@ -142,14 +145,37 @@ void compile_decl(Compiler *c, Ast *code) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
         }
     }
-    int loc = c->env.symbols.size;
+    int loc = num_local(c);
     create_symbol(&c->env, sym, type, loc);
 
     int local = c->parent != 0; // If the variable is global or local
-    append_list(&c->instr, from_double(local ? STORE : GSTORE));
-    append_list(&c->instr, from_double(loc));
+    if (!local) {
+        append_list(&c->instr, from_double(GSTORE));
+        append_list(&c->instr, from_double(loc));
+    }
     append_list(&c->instr, from_double(local ? LOAD : GLOAD));
     append_list(&c->instr, from_double(loc));
+}
+
+void compile_block(Compiler *c, Ast *code) {
+    Compiler block;
+    ctor_compiler(&block);
+    block.parent = c;
+    for (size_t i = 0; i < code->nodes.length; i++) {
+        compile(&block, get_child(code, i));
+        if (i + 1 != code->nodes.length)
+            append_list(&block.instr, from_double(POP));
+    }
+    for (size_t i = 0; i < block.instr.length; i++) {
+        append_list(&c->instr, access_list(&block.instr, i));
+    }
+    append_list(&c->instr, from_double(STORET));
+    if (block.env.symbols.size > 0) {
+        append_list(&c->instr, from_double(POPN));
+        append_list(&c->instr, from_double(block.env.symbols.size));
+    }
+    append_list(&c->instr, from_double(PUSRET));
+    dtor_compiler(&block);
 }
 
 const Symbol *find_symbol(const Compiler *c, const char *sym) {
@@ -168,4 +194,13 @@ Ang_Type *find_type(const Compiler *c, const char *sym) {
         return get_ptr(type);
     }
     return find_type(c->parent, sym);
+}
+
+size_t num_local(const Compiler *c) {
+    size_t num = 0;
+    while (c) {
+        if (c->parent) num += c->env.symbols.size;
+        c = c->parent;
+    }
+    return num;
 }

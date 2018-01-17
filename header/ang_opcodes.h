@@ -6,6 +6,7 @@
     code(PUSH, 1) \
     code(PUSH_0, 0) \
     code(POP, 0) \
+    code(POPN, 1) \
     code(ADD, 0) \
     code(SUB, 0) \
     code(MUL, 0) \
@@ -17,7 +18,9 @@
     code(GSTORE, 1) \
     code(GLOAD, 1) \
     code(STORE, 1) \
-    code(LOAD, 1)
+    code(LOAD, 1) \
+    code(STORET, 0) \
+    code(PUSRET, 0)
 
 #define DEFINE_ENUM_TYPE(type, _) type,
 typedef enum {

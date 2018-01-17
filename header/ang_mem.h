@@ -8,7 +8,7 @@
 #define MAX_LOCALS 256
 
 typedef enum {
-    A, B, C, D, IP, SP, FP, NUM_REGISTERS
+    A, B, C, D, RET_VAL, NUM_REGISTERS
 } Registers;
 
 typedef struct {
@@ -21,7 +21,9 @@ typedef struct {
     size_t num_objects;
     size_t max_objects;
     Ang_Obj *mem_head;
-    int registers[NUM_REGISTERS];
+    Ang_Obj *registers[NUM_REGISTERS];
+
+    int ip, sp, fp;
 } Memory;
 
 void ctor_memory(Memory *mem, size_t gmem_size);

@@ -24,8 +24,10 @@ void compile_binary_op(Compiler *c, Ast *code);
 void compile_grouping(Compiler *c, Ast *code);
 void compile_literal(Compiler *c, Ast *code);
 void compile_decl(Compiler *c, Ast *code);
+void compile_block(Compiler *c, Ast *code);
 
 const Symbol *find_symbol(const Compiler *c, const char *sym);
 Ang_Type *find_type(const Compiler *c, const char *sym);
+size_t num_local(const Compiler *c);
 
 #endif // COMPILER_H

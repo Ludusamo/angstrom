@@ -71,6 +71,7 @@ void synchronize(Parser *parser) {
 }
 
 void destroy_ast(Ast *ast) {
+    if (!ast) return;
     for (size_t i = 0; i < ast->nodes.length; i++) {
         Ast *node = (Ast *) get_ptr(access_list(&ast->nodes, i));
         destroy_ast(node);
@@ -182,7 +183,7 @@ Ast *parse_decl(Parser *parser) {
             synchronize(parser);
         }
     }
-    return parse_primary(parser);
+    return parse_block(parser);
 }
 
 Ast *parse_type(Parser *parser) {
@@ -194,12 +195,34 @@ Ast *parse_type(Parser *parser) {
         return expr;
     } else {
         int lineno = peek_token(parser)->line;
-        error(lineno, UNEXPECTED_TOKEN, "Expected type identifier.");
-        printf("\n");
+        error(lineno, UNEXPECTED_TOKEN, "Expected type identifier.\n");
         parser->enc_err = 1;
         synchronize(parser);
     }
     return 0;
+}
+
+Ast *parse_block(Parser *parser) {
+    if (match_token(parser, LBRACE)) {
+        Ast *expr = calloc(1, sizeof(Ast));
+        expr->type = BLOCK;
+        expr->assoc_token = previous_token(parser);
+        ctor_list(&expr->nodes);
+        while (peek_token(parser)->type != RBRACE) {
+            if (peek_token(parser)->type == TEOF) {
+                error(peek_token(parser)->line,
+                    UNCLOSED_BLOCK,
+                    "Block missing closing '}'\n");
+                parser->enc_err = 1;
+                return expr;
+            } else {
+                append_list(&expr->nodes, from_ptr(parse_expression(parser)));
+            }
+        }
+        consume_token(parser, RBRACE, "Panic...");
+        return expr;
+    }
+    return parse_primary(parser);
 }
 
 Ast *parse_primary(Parser *parser) {
@@ -219,7 +242,7 @@ Ast *parse_primary(Parser *parser) {
     }
 
     int lineno = peek_token(parser)->line;
-    error(lineno, UNEXPECTED_TOKEN, "Encountered unknown token.");
+    error(lineno, UNEXPECTED_TOKEN, "Encountered unknown token.\n");
     parser->enc_err = 1;
     synchronize(parser);
     return 0;
