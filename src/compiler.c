@@ -150,8 +150,10 @@ void compile_decl(Compiler *c, Ast *code) {
     create_symbol(&c->env, sym, type, loc);
 
     int local = c->parent != 0; // If the variable is global or local
-    append_list(&c->instr, from_double(local ? STORE : GSTORE));
-    append_list(&c->instr, from_double(loc));
+    if (!local) {
+        append_list(&c->instr, from_double(GSTORE));
+        append_list(&c->instr, from_double(loc));
+    }
     append_list(&c->instr, from_double(local ? LOAD : GLOAD));
     append_list(&c->instr, from_double(loc));
 }
@@ -162,10 +164,15 @@ void compile_block(Compiler *c, Ast *code) {
     block.parent = c;
     for (size_t i = 0; i < code->nodes.length; i++) {
         compile(&block, get_child(code, i));
-        append_list(&block.instr, from_double(POP));
+        if (i + 1 != code->nodes.length)
+            append_list(&block.instr, from_double(POP));
     }
     for (size_t i = 0; i < block.instr.length; i++) {
         append_list(&c->instr, access_list(&block.instr, i));
+    }
+    if (block.env.symbols.size > 0) {
+        append_list(&c->instr, from_double(POPN));
+        append_list(&c->instr, from_double(block.env.symbols.size));
     }
     dtor_compiler(&block);
 }

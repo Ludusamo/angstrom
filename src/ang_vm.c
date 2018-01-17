@@ -19,13 +19,13 @@ void dtor_ang_vm(Ang_VM *vm) {
 }
 
 int get_next_op(Ang_VM *vm) {
-    return access_list(&vm->prog, vm->mem.registers[IP]++).as_int32;
+    return access_list(&vm->prog, vm->mem.ip).as_int32;
 }
 
 void eval(Ang_VM *vm) {
     int op = fetch(vm);
     if (vm->trace) print_stack_trace(vm);
-    vm->mem.registers[IP]++;
+    vm->mem.ip++;
     switch (op) {
     case HALT:
         vm->running = 0;
@@ -86,16 +86,16 @@ void eval(Ang_VM *vm) {
         push_stack(&vm->mem, vm->mem.gmem[get_next_op(vm)]);
         break;
     case STORE:
-        vm->mem.stack[vm->mem.registers[FP] + get_next_op(vm)] = pop_stack(&vm->mem);
+        vm->mem.stack[vm->mem.fp + get_next_op(vm)] = pop_stack(&vm->mem);
         break;
     case LOAD:
-        push_stack(&vm->mem, vm->mem.stack[vm->mem.registers[FP] + get_next_op(vm)]);
+        push_stack(&vm->mem, vm->mem.stack[vm->mem.fp + get_next_op(vm)]);
         break;
     }
 }
 
 int fetch(const Ang_VM *vm) {
-    return access_list(&vm->prog, vm->mem.registers[IP]).as_int32;
+    return access_list(&vm->prog, vm->mem.ip).as_int32;
 }
 
 int emit_op(Ang_VM *vm, int op) {
@@ -115,5 +115,5 @@ void run_compiled_instructions(Ang_VM *vm, Compiler *c) {
     for (size_t i = 0; i < c->instr.length; i++) {
         last_op = emit_op(vm, access_list(&c->instr, i).as_int32);
     }
-    while (vm->mem.registers[IP] < last_op + 1) eval(vm);
+    while (vm->mem.ip < last_op + 1) eval(vm);
 }

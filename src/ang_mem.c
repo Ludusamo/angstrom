@@ -13,11 +13,14 @@ void ctor_memory(Memory *mem, size_t gmem_size) {
     for (int i = 0; i < NUM_REGISTERS; i++) {
         mem->registers[i] = 0;
     }
+    mem->ip = 0;
+    mem->sp = 0;
+    mem->fp = 0;
 }
 
 void dtor_memory(Memory *mem) {
     // Set stack pointer and gmem_size to 0 so all objects get collected
-    mem->registers[SP] = 0;
+    mem->sp = 0;
     mem->gmem_size = 0;
     gc(mem);
     free(mem->gmem);
@@ -37,7 +40,7 @@ Ang_Obj *new_object(Memory *mem, Ang_Type *type) {
 }
 
 void mark_all_objects(Memory *mem) {
-    for (int i = 0; i < mem->registers[SP]; i++) {
+    for (int i = 0; i < mem->sp; i++) {
         mark_ang_obj(mem->stack[i]);
     }
     for (size_t i = 0; i < mem->global_size; i++) {
@@ -67,20 +70,20 @@ void gc(Memory *mem) {
 }
 
 int push_stack(Memory *mem, Ang_Obj *obj) {
-    if (mem->registers[SP] >= MAX_STACK_SIZE) {
+    if (mem->sp >= MAX_STACK_SIZE) {
         runtime_error(STACK_OVERFLOW, "Stack overflow");
         return 0;
     }
-    mem->stack[mem->registers[SP]++] = obj;
+    mem->stack[mem->sp++] = obj;
     return 1;
 }
 
 Ang_Obj *pop_stack(Memory *mem) {
-    if (mem->registers[SP] <= 0) {
+    if (mem->sp <= 0) {
         runtime_error(STACK_UNDERFLOW, "Stack underflow");
         return 0;
     }
-    return mem->stack[--mem->registers[SP]];
+    return mem->stack[--mem->sp];
 }
 
 int32_t pop_int(Memory *mem) {
