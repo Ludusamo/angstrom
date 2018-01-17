@@ -39,6 +39,10 @@ void eval(Ang_VM *vm) {
     case POP:
         pop_stack(&vm->mem);
         break;
+    case POPN:
+        for (int i = 0; i < get_next_op(vm); i++)
+            pop_stack(&vm->mem);
+        break;
     case ADD:
         push_num_stack(vm, pop_int(&vm->mem) + pop_int(&vm->mem));
         break;

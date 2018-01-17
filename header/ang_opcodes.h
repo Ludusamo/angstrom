@@ -6,6 +6,7 @@
     code(PUSH, 1) \
     code(PUSH_0, 0) \
     code(POP, 0) \
+    code(POPN, 1) \
     code(ADD, 0) \
     code(SUB, 0) \
     code(MUL, 0) \
