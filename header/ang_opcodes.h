@@ -18,7 +18,9 @@
     code(GSTORE, 1) \
     code(GLOAD, 1) \
     code(STORE, 1) \
-    code(LOAD, 1)
+    code(LOAD, 1) \
+    code(STORET, 0) \
+    code(PUSRET, 0)
 
 #define DEFINE_ENUM_TYPE(type, _) type,
 typedef enum {

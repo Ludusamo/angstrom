@@ -66,7 +66,6 @@ void compile_binary_op(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
     compile(c, get_child(code, 1));
 
-    printf("hi\n");
     code->eval_type = find_type(c, "num");
     if (get_child(code, 0)->eval_type->id != NUM_TYPE ||
             get_child(code, 1)->eval_type->id != NUM_TYPE) {
@@ -146,7 +145,7 @@ void compile_decl(Compiler *c, Ast *code) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
         }
     }
-    int loc = c->env.symbols.size;
+    int loc = num_local(c);
     create_symbol(&c->env, sym, type, loc);
 
     int local = c->parent != 0; // If the variable is global or local
@@ -170,10 +169,12 @@ void compile_block(Compiler *c, Ast *code) {
     for (size_t i = 0; i < block.instr.length; i++) {
         append_list(&c->instr, access_list(&block.instr, i));
     }
+    append_list(&c->instr, from_double(STORET));
     if (block.env.symbols.size > 0) {
         append_list(&c->instr, from_double(POPN));
         append_list(&c->instr, from_double(block.env.symbols.size));
     }
+    append_list(&c->instr, from_double(PUSRET));
     dtor_compiler(&block);
 }
 
@@ -193,4 +194,13 @@ Ang_Type *find_type(const Compiler *c, const char *sym) {
         return get_ptr(type);
     }
     return find_type(c->parent, sym);
+}
+
+size_t num_local(const Compiler *c) {
+    size_t num = 0;
+    while (c) {
+        if (c->parent) num += c->env.symbols.size;
+        c = c->parent;
+    }
+    return num;
 }

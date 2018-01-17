@@ -19,7 +19,7 @@ void dtor_ang_vm(Ang_VM *vm) {
 }
 
 int get_next_op(Ang_VM *vm) {
-    return access_list(&vm->prog, vm->mem.ip).as_int32;
+    return access_list(&vm->prog, vm->mem.ip++).as_int32;
 }
 
 void eval(Ang_VM *vm) {
@@ -39,10 +39,13 @@ void eval(Ang_VM *vm) {
     case POP:
         pop_stack(&vm->mem);
         break;
-    case POPN:
-        for (int i = 0; i < get_next_op(vm); i++)
+    case POPN: {
+        int num_local = get_next_op(vm);
+        for (int i = 0; i < num_local; i++) {
             pop_stack(&vm->mem);
+        }
         break;
+    }
     case ADD:
         push_num_stack(vm, pop_int(&vm->mem) + pop_int(&vm->mem));
         break;
@@ -91,6 +94,12 @@ void eval(Ang_VM *vm) {
     case LOAD:
         push_stack(&vm->mem, vm->mem.stack[vm->mem.fp + get_next_op(vm)]);
         break;
+    case STORET:
+        vm->mem.registers[RET_VAL] = pop_stack(&vm->mem);
+        break;
+    case PUSRET:
+        push_stack(&vm->mem, vm->mem.registers[RET_VAL]);
+        break;
     }
 }
 
@@ -100,7 +109,7 @@ int fetch(const Ang_VM *vm) {
 
 int emit_op(Ang_VM *vm, int op) {
     append_list(&vm->prog, from_double(op));
-    return vm->prog.length - 1;
+    return vm->prog.length;
 }
 
 void push_num_stack(Ang_VM *vm, double num) {
@@ -115,5 +124,5 @@ void run_compiled_instructions(Ang_VM *vm, Compiler *c) {
     for (size_t i = 0; i < c->instr.length; i++) {
         last_op = emit_op(vm, access_list(&c->instr, i).as_int32);
     }
-    while (vm->mem.ip < last_op + 1) eval(vm);
+    while (vm->mem.ip < last_op) eval(vm);
 }
