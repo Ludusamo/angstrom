@@ -111,5 +111,5 @@ void run_compiled_instructions(Ang_VM *vm, Compiler *c) {
     for (size_t i = 0; i < c->instr.length; i++) {
         last_op = emit_op(vm, access_list(&c->instr, i).as_int32);
     }
-    while (vm->mem.registers[IP] < last_op) eval(vm);
+    while (vm->mem.registers[IP] < last_op + 1) eval(vm);
 }
