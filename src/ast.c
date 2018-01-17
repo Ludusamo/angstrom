@@ -48,6 +48,7 @@ const Token *consume_token(Parser *parser, Token_Type type, const char *err) {
         return advance_token(parser);
     }
     error(peek_token(parser)->line, UNEXPECTED_TOKEN, err);
+    parser->enc_err = 1;
     return 0;
 }
 
@@ -59,6 +60,7 @@ void synchronize(Parser *parser) {
     advance_token(parser);
     while (!at_end(parser)) {
         switch(peek_token(parser)->type) {
+        case VAR:
         case FUNC:
             return;
         default:
@@ -151,28 +153,76 @@ Ast *parse_unary(Parser *parser) {
         expr->type = UNARY_OP;
         ctor_list(&expr->nodes);
         expr->assoc_token = previous_token(parser);
-        append_list(&expr->nodes, from_ptr(parse_primary(parser)));
+        append_list(&expr->nodes, from_ptr(parse_decl(parser)));
         return expr;
     }
+    return parse_decl(parser);
+}
+
+Ast *parse_decl(Parser *parser) {
+    if (match_token(parser, VAR)) {
+        if (match_token(parser, IDENT)) {
+            Ast *expr = calloc(1, sizeof(Ast));
+            expr->type = VAR_DECL;
+            expr->assoc_token = previous_token(parser);
+            ctor_list(&expr->nodes);
+
+            if (match_token(parser, EQ)) {
+                append_list(&expr->nodes, from_ptr(parse_expression(parser)));
+            }
+            if (match_token(parser, COLON)) {
+                append_list(&expr->nodes, from_ptr(parse_type(parser)));
+            }
+            return expr;
+        } else {
+            int lineno = peek_token(parser)->line;
+            error(lineno, UNEXPECTED_TOKEN, "Expected identifier.");
+            printf("\n");
+            parser->enc_err = 1;
+            synchronize(parser);
+        }
+    }
     return parse_primary(parser);
+}
+
+Ast *parse_type(Parser *parser) {
+    if (match_token(parser, IDENT)) {
+        Ast *expr = calloc(1, sizeof(Ast));
+        expr->type = TYPE_DECL;
+        expr->assoc_token = previous_token(parser);
+        ctor_list(&expr->nodes);
+        return expr;
+    } else {
+        int lineno = peek_token(parser)->line;
+        error(lineno, UNEXPECTED_TOKEN, "Expected type identifier.");
+        printf("\n");
+        parser->enc_err = 1;
+        synchronize(parser);
+    }
+    return 0;
 }
 
 Ast *parse_primary(Parser *parser) {
     if (match_token(parser, LPAREN)) {
         Ast *expr = parse_expression(parser);
         consume_token(parser, RPAREN, "Expected \")\" after expression.");
-        parser->enc_err = 1;
         return expr;
     }
 
-    Ast *literal_node = calloc(1, sizeof(Ast));
     if (match_token(parser, NUM) || match_token(parser, STR)) {
+        Ast *literal_node = calloc(1, sizeof(Ast));
         const Token *t = previous_token(parser);
         literal_node->type = LITERAL;
         ctor_list(&literal_node->nodes);
         literal_node->assoc_token = t;
+        return literal_node;
     }
-    return literal_node;
+
+    int lineno = peek_token(parser)->line;
+    error(lineno, UNEXPECTED_TOKEN, "Encountered unknown token.");
+    parser->enc_err = 1;
+    synchronize(parser);
+    return 0;
 }
 
 Ast *parse(const List *tokens) {

@@ -13,7 +13,11 @@
     code(ADDF, 0) \
     code(SUBF, 0) \
     code(MULF, 0) \
-    code(DIVF, 0)
+    code(DIVF, 0) \
+    code(GSTORE, 1) \
+    code(GLOAD, 1) \
+    code(STORE, 1) \
+    code(LOAD, 1)
 
 #define DEFINE_ENUM_TYPE(type, _) type,
 typedef enum {

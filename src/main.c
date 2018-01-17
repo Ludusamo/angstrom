@@ -4,7 +4,9 @@
 #include "ast.h"
 #include "ang_vm.h"
 #include "ang_opcodes.h"
+#include "ang_type.h"
 #include "compiler.h"
+#include "ang_primitives.h"
 
 char *getline(void) {
     char * line = malloc(100), * linep = line;
@@ -54,28 +56,37 @@ void run(const char *exp) {
     if (ast) {
         print_ast(ast, 0);
     }
+    if (!parser.enc_err) {
 
-    // Compile
-    Compiler c;
-    ctor_compiler(&c);
-    compile(&c, ast);
+        // Compile
+        Compiler c;
+        ctor_compiler(&c);
+        Ang_Type und = primitive_ang_type(UNDECLARED);
+        set_hashtable(&c.env.types, "undeclared", from_ptr(&und));
+        Ang_Type num = primitive_ang_type(NUM_TYPE);
+        set_hashtable(&c.env.types, "num", from_ptr(&num));
+        Ang_Type bool = primitive_ang_type(BOOL_TYPE);
+        set_hashtable(&c.env.types, "bool", from_ptr(&bool));
+        compile(&c, ast);
 
-    // Execute
-    Ang_VM vm;
-    ctor_ang_vm(&vm, 100);
-    vm.trace = 1;
-    for (size_t i = 0; i < c.instr.length; i++) {
-        emit_op(&vm, access_list(&c.instr, i).as_int32);
+        if (!c.enc_err) {
+            // Execute
+            Ang_VM vm;
+            ctor_ang_vm(&vm, 100);
+            vm.trace = 1;
+            run_compiled_instructions(&vm, &c);
+
+            Ang_Obj *result = pop_stack(&vm.mem);
+            print_ang_obj(result);
+
+            dtor_ang_vm(&vm);
+        }
+        dtor_compiler(&c);
+        destroy_ast(ast);
+        free(ast);
     }
-    while (vm.mem.registers[IP] < vm.prog.length) eval(&vm);
-    Ang_Obj *result = pop_stack(&vm.mem);
-    print_ang_obj(result);
 
     // Cleanup
-    dtor_ang_vm(&vm);
-    dtor_compiler(&c);
-    destroy_ast(ast);
-    free(ast);
     destroy_tokens(tokens);
     dtor_list(tokens);
     free(tokens);

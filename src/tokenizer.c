@@ -87,6 +87,7 @@ Value number(Scanner *scanner) {
 
 void populate_keywords(Hashtable *keywords) {
     ctor_hashtable(keywords);
+    set_hashtable(keywords, "var", from_double(VAR));
     set_hashtable(keywords, "func", from_double(FUNC));
     set_hashtable(keywords, "return", from_double(RET));
 }
@@ -110,6 +111,7 @@ List *tokenize(const char *src) {
         case '[': add_token(tokens, &scan, LBRACK, nil_val); break;
         case ']': add_token(tokens, &scan, RBRACK, nil_val); break;
         case ',': add_token(tokens, &scan, COMMA, nil_val); break;
+        case ':': add_token(tokens, &scan, COLON, nil_val); break;
         case '.': add_token(tokens, &scan, DOT, nil_val); break;
         case '-': add_token(tokens, &scan, MINUS, nil_val); break;
         case '+': add_token(tokens, &scan, PLUS, nil_val); break;

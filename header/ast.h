@@ -3,6 +3,7 @@
 
 #include <list.h>
 #include "tokenizer.h"
+#include "ang_type.h"
 
 #define AST_TYPE_LIST(code) \
     code(PROG) \
@@ -11,7 +12,9 @@
     code(COMP_OP) \
     code(ADD_OP) \
     code(MUL_OP) \
-    code(UNARY_OP)
+    code(UNARY_OP) \
+    code(VAR_DECL) \
+    code(TYPE_DECL)
 
 #define DEFINE_ENUM_TYPE(type) type,
 typedef enum {
@@ -23,6 +26,7 @@ typedef struct {
     Ast_Type type;
     List nodes;
     const Token *assoc_token;
+    Ang_Type *eval_type;
 } Ast;
 
 typedef struct {
@@ -50,6 +54,8 @@ Ast *parse_comparison(Parser *parser);
 Ast *parse_addition(Parser *parser);
 Ast *parse_multiplication(Parser *parser);
 Ast *parse_unary(Parser *parser);
+Ast *parse_decl(Parser *parser);
+Ast *parse_type(Parser *parser);
 Ast *parse_primary(Parser *parser);
 Ast *parse_literal(Parser *parser);
 void destroy_ast(Ast *ast);

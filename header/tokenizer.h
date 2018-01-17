@@ -13,6 +13,7 @@
     code(LBRACK) \
     code(RBRACK) \
     code(COMMA) \
+    code(COLON) \
     code(DOT) \
     code(MINUS) \
     code(PLUS) \
@@ -29,6 +30,7 @@
     code(IDENT) \
     code(STR) \
     code(NUM) \
+    code(VAR) \
     code(FUNC) \
     code(RET) \
     code(TEOF)

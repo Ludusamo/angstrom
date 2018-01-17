@@ -24,7 +24,7 @@ void dtor_memory(Memory *mem) {
     mem->gmem = 0;
 }
 
-Ang_Obj *new_object(Memory *mem, int type) {
+Ang_Obj *new_object(Memory *mem, Ang_Type *type) {
     if (mem->num_objects >= mem->max_objects) gc(mem);
     Ang_Obj *obj = calloc(sizeof(Ang_Obj), 1);
     obj->type = type;
@@ -72,13 +72,6 @@ int push_stack(Memory *mem, Ang_Obj *obj) {
         return 0;
     }
     mem->stack[mem->registers[SP]++] = obj;
-    return 1;
-}
-
-int push_num_stack(Memory *mem, double d) {
-    Ang_Obj *obj = new_object(mem, NUM);
-    obj->v = from_double(d);
-    push_stack(mem, obj);
     return 1;
 }
 
