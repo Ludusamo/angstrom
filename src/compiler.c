@@ -33,6 +33,9 @@ void compile(Compiler *c, Ast *code) {
     case LITERAL:
         compile_literal(c, code);
         break;
+    case VARIABLE:
+        compile_variable(c, code);
+        break;
     case VAR_DECL:
         compile_decl(c, code);
         break;
@@ -110,6 +113,21 @@ void compile_literal(Compiler *c, Ast *code) {
     append_list(&c->instr, literal);
 }
 
+void compile_variable(Compiler *c, Ast *code) {
+    const Symbol *sym = find_symbol(c, code->assoc_token->lexeme);
+    if (!sym) {
+        error(code->assoc_token->line,
+            UNDECLARED_VARIABLE,
+            code->assoc_token->lexeme);
+        fprintf(stderr, "\n");
+        c->enc_err = 1;
+        return;
+    }
+    append_list(&c->instr, from_double(sym->global ? GLOAD : LOAD));
+    append_list(&c->instr, from_double(sym->loc));
+    code->eval_type = sym->type;
+}
+
 void compile_decl(Compiler *c, Ast *code) {
     const char *sym = code->assoc_token->lexeme;
     if (symbol_exists(&c->env, sym)) {
@@ -145,10 +163,11 @@ void compile_decl(Compiler *c, Ast *code) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
         }
     }
-    int loc = num_local(c);
-    create_symbol(&c->env, sym, type, loc);
-
+    code->eval_type = type;
     int local = c->parent != 0; // If the variable is global or local
+    int loc = local ? num_local(c) : c->env.symbols.size;
+    create_symbol(&c->env, sym, type, loc, !local);
+
     if (!local) {
         append_list(&c->instr, from_double(GSTORE));
         append_list(&c->instr, from_double(loc));
@@ -175,6 +194,9 @@ void compile_block(Compiler *c, Ast *code) {
         append_list(&c->instr, from_double(block.env.symbols.size));
     }
     append_list(&c->instr, from_double(PUSRET));
+
+    code->eval_type = get_child(code, code->nodes.length - 1)->eval_type;
+    c->enc_err = block.enc_err;
     dtor_compiler(&block);
 }
 
