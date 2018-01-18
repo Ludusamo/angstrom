@@ -11,7 +11,8 @@
     code(NAME_COLLISION) \
     code(UNKNOWN_TYPE) \
     code(TYPE_ERROR) \
-    code(UNCLOSED_BLOCK)
+    code(UNCLOSED_BLOCK) \
+    code(UNCLOSED_TUPLE)
 
 #define DEFINE_ENUM_CODE(type) type,
 typedef enum {

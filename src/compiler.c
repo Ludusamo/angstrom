@@ -159,11 +159,7 @@ void compile_decl(Compiler *c, Ast *code) {
         } else {
             append_list(&c->instr, from_double(PUSOBJ));
             Value type_val = from_ptr(type);
-            printf("%lx\n", type_val.bits);
             append_list(&c->instr, type_val);
-            printf("%lx\n", c->instr.length - 1);
-            printf("%lx\n", access_list(&c->instr, c->instr.length - 1).bits);
-            printf("Type %s\n", type->name);
         }
         append_list(&c->instr, type->default_value);
     } else {

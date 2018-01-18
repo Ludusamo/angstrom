@@ -193,6 +193,25 @@ Ast *parse_type(Parser *parser) {
         expr->assoc_token = previous_token(parser);
         ctor_list(&expr->nodes);
         return expr;
+    } else if (match_token(parser, LPAREN)) {
+        Ast *expr = calloc(1, sizeof(Ast));
+        expr->type = TYPE_DECL;
+        expr->assoc_token = previous_token(parser);
+        ctor_list(&expr->nodes);
+        while (peek_token(parser)->type != RPAREN) {
+            append_list(&expr->nodes, from_ptr(parse_type(parser)));
+            if (peek_token(parser)->type == COMMA)
+                consume_token(parser, COMMA, "Panic...");
+            else if (peek_token(parser)->type == TEOF) {
+                error(peek_token(parser)->line,
+                    UNCLOSED_TUPLE,
+                    "Tuple type missing closing ')'\n");
+                parser->enc_err = 1;
+                return expr;
+            }
+        }
+        consume_token(parser, RPAREN, "Panic...");
+        return expr;
     } else {
         int lineno = peek_token(parser)->line;
         error(lineno, UNEXPECTED_TOKEN, "Expected type identifier.\n");
