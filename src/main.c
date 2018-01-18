@@ -70,6 +70,7 @@ void run(const char *exp) {
         compile(&c, ast);
 
         if (!c.enc_err) {
+            printf("Beginning to execute\n");
             // Execute
             Ang_VM vm;
             ctor_ang_vm(&vm, 100);

@@ -15,7 +15,8 @@
     code(MUL_OP) \
     code(UNARY_OP) \
     code(VAR_DECL) \
-    code(TYPE_DECL)
+    code(TYPE_DECL) \
+    code(VARIABLE)
 
 #define DEFINE_ENUM_TYPE(type) type,
 typedef enum {
