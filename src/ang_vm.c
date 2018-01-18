@@ -33,6 +33,12 @@ void eval(Ang_VM *vm) {
     case PUSH:
         push_num_stack(vm, get_next_op(vm).as_int32);
         break;
+    case PUSOBJ: {
+        Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
+        obj->v = get_next_op(vm);
+        push_stack(&vm->mem, obj);
+        break;
+    }
     case PUSH_0:
         push_num_stack(vm, 0);
         break;
