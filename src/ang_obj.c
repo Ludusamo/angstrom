@@ -13,5 +13,7 @@ void print_ang_obj(const Ang_Obj *obj) {
         else printf("%d\n", obj->v.as_int32);
     } else if (obj->type->id == STRING_TYPE) {
         // TODO: Print String
+    } else {
+        printf("<%s>\n", obj->type->name);
     }
 }

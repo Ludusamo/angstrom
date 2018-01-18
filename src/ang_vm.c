@@ -113,8 +113,8 @@ int fetch(const Ang_VM *vm) {
     return access_list(&vm->prog, vm->mem.ip).as_int32;
 }
 
-int emit_op(Ang_VM *vm, int op) {
-    append_list(&vm->prog, from_double(op));
+int emit_op(Ang_VM *vm, Value op) {
+    append_list(&vm->prog, op);
     return vm->prog.length;
 }
 
@@ -128,7 +128,7 @@ void run_compiled_instructions(Ang_VM *vm, Compiler *c) {
     vm->compiler = c;
     int last_op = 0;
     for (size_t i = 0; i < c->instr.length; i++) {
-        last_op = emit_op(vm, access_list(&c->instr, i).as_int32);
+        last_op = emit_op(vm, access_list(&c->instr, i));
     }
     while (vm->mem.ip < last_op) eval(vm);
 }
