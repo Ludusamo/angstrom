@@ -41,7 +41,7 @@ const char *ast_type_to_str(Ast_Type t);
 void print_ast(const Ast *ast, int depth);
 
 const Token *advance_token(Parser *parser);
-const Token *peek_token(const Parser *parser);
+const Token *peek_token(const Parser *parser, int peek);
 const Token *previous_token(const Parser *parser);
 int check(const Parser *parser, Token_Type type);
 int match_token(Parser *parser, Token_Type type);
