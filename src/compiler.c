@@ -105,12 +105,25 @@ void compile_literal(Compiler *c, Ast *code) {
     Value literal = code->assoc_token->literal;
     if (code->assoc_token->type == NUM) {
         code->eval_type = find_type(c, "Num");
+        append_list(&c->instr, from_double(PUSH));
+        append_list(&c->instr, literal);
     } else if (code->assoc_token->type == STR) {
         code->eval_type = find_type(c, "String");
+    } else if (code->assoc_token->type == LPAREN) {
+        List types;
+        ctor_list(&types);
+        for (int i = code->nodes.length - 1; i >= 0; i--) {
+            compile(c, get_child(code, i));
+            Ang_Type *child_type = get_child(code,i)->eval_type;
+            append_list(&types, from_ptr(child_type));
+        }
+        code->eval_type = get_tuple_type(c, &types);
+        dtor_list(&types);
+        append_list(&c->instr, from_double(CONS_TUPLE));
+        append_list(&c->instr, from_ptr(code->eval_type));
+        append_list(&c->instr, from_double(code->nodes.length));
     }
     //TODO: Handle Strings
-    append_list(&c->instr, from_double(PUSH));
-    append_list(&c->instr, literal);
 }
 
 void compile_variable(Compiler *c, Ast *code) {
@@ -160,6 +173,7 @@ void compile_decl(Compiler *c, Ast *code) {
             type = get_child(code, 0)->eval_type;
         if (type != get_child(code, 0)->eval_type) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
+            c->enc_err = 1;
         }
     }
     code->eval_type = type;
@@ -186,16 +200,7 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
             append_list(&types, from_ptr(child_type));
         }
 
-        char *type_name = construct_tuple_name(&types);
-
-        Ang_Type *tuple_type = get_ptr(access_hashtable(&type->slots, type_name));
-        if (!tuple_type) {
-            Ang_Type *t = construct_tuple_product(&types, num_types(c) + 1, type_name);
-            tuple_type = t;
-            set_hashtable(&type->slots, type_name, from_ptr(t));
-        } else {
-            free(type_name);
-        }
+        Ang_Type *tuple_type = get_tuple_type(c, &types);
         dtor_list(&types);
         return tuple_type;
     }
@@ -235,6 +240,20 @@ Ang_Type *construct_tuple_product(const List *types, int id, char *tuple_name) {
     Ang_Type *t = calloc(1, sizeof(Ang_Type));
     ctor_ang_type(t, id, tuple_name, from_ptr(default_tuple));
     return t;
+}
+
+Ang_Type *get_tuple_type(const Compiler *c, const List *types) {
+    Ang_Type *tuple = find_type(c, "(");
+    char *type_name = construct_tuple_name(types);
+    Ang_Type *tuple_type = get_ptr(access_hashtable(&tuple->slots, type_name));
+    if (!tuple_type) {
+        Ang_Type *t = construct_tuple_product(types, num_types(c) + 1, type_name);
+        tuple_type = t;
+        set_hashtable(&tuple->slots, type_name, from_ptr(t));
+    } else {
+        free(type_name);
+    }
+    return tuple_type;
 }
 
 void compile_block(Compiler *c, Ast *code) {

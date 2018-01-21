@@ -51,6 +51,10 @@ void mark_all_objects(Memory *mem) {
 void sweep_mem(Memory *mem) {
     Ang_Obj **obj = &mem->mem_head;
     while (*obj) {
+        if ((*obj)->type->name[0] == '(') { // Is a tuple
+            dtor_list(get_ptr((*obj)->v));
+            free(get_ptr((*obj)->v));
+        }
         if (!(*obj)->marked) {
             Ang_Obj *unreachable = *obj;
             *obj = unreachable->next;

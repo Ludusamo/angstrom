@@ -29,6 +29,7 @@ void compile_decl(Compiler *c, Ast *code);
 Ang_Type *compile_type(Compiler *c, Ast *code);
 char *construct_tuple_name(const List *types);
 Ang_Type *construct_tuple_product(const List *types, int id, char *tuple_name);
+Ang_Type *get_tuple_type(const Compiler *c, const List *types);
 
 void compile_block(Compiler *c, Ast *code);
 

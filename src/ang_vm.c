@@ -106,6 +106,18 @@ void eval(Ang_VM *vm) {
     case PUSRET:
         push_stack(&vm->mem, vm->mem.registers[RET_VAL]);
         break;
+    case CONS_TUPLE: {
+        Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
+        List *tuple_vals = malloc(sizeof(List));
+        ctor_list(tuple_vals);
+        int num_slots = get_next_op(vm).as_int32;
+        for (int i = 0; i < num_slots; i++) {
+            append_list(tuple_vals, from_ptr(pop_stack(&vm->mem)));
+        }
+        obj->v = from_ptr(tuple_vals);
+        push_stack(&vm->mem, obj);
+        break;
+    }
     }
 }
 

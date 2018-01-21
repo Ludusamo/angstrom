@@ -247,7 +247,21 @@ Ast *parse_block(Parser *parser) {
 
 Ast *parse_primary(Parser *parser) {
     if (match_token(parser, LPAREN)) {
+        const Token *paren_token = previous_token(parser);
         Ast *expr = parse_expression(parser);
+        if (peek_token(parser, 1)->type == COMMA) {
+            Ast *literal_node = calloc(1, sizeof(Ast));
+            literal_node->assoc_token = paren_token;
+            literal_node->type = LITERAL;
+            ctor_list(&literal_node->nodes);
+            append_list(&literal_node->nodes, from_ptr(expr));
+            do {
+                consume_token(parser, COMMA, "Panic...");
+                append_list(&literal_node->nodes, from_ptr(parse_expression(parser)));
+            } while (peek_token(parser, 1)->type == COMMA);
+            consume_token(parser, RPAREN, "Expected \")\" after tuple val.");
+            return literal_node;
+        }
         consume_token(parser, RPAREN, "Expected \")\" after expression.");
         return expr;
     }

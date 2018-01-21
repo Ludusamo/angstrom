@@ -21,7 +21,8 @@
     code(STORE, 1) \
     code(LOAD, 1) \
     code(STORET, 0) \
-    code(PUSRET, 0)
+    code(PUSRET, 0) \
+    code(CONS_TUPLE, 2)
 
 #define DEFINE_ENUM_TYPE(type, _) type,
 typedef enum {

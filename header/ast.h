@@ -60,7 +60,6 @@ Ast *parse_decl(Parser *parser);
 Ast *parse_type(Parser *parser);
 Ast *parse_block(Parser *parser);
 Ast *parse_primary(Parser *parser);
-Ast *parse_literal(Parser *parser);
 void destroy_ast(Ast *ast);
 
 Ast *parse(const List *tokens);
