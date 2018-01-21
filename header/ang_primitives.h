@@ -8,7 +8,8 @@
     code(NUM_TYPE) \
     code(BOOL_TYPE) \
     code(STRING_TYPE) \
-    code(TUPLE_TYPE)
+    code(TUPLE_TYPE) \
+    code(NUM_PRIMITIVE)
 
 #define DEFINE_ENUM_TYPE(type) type,
 typedef enum {
@@ -17,15 +18,14 @@ typedef enum {
 #undef DEFINE_ENUM_TYPE
 
 typedef struct {
-    Value num_default;
-    Value bool_default;
-    Value string_default;
-    Value tuple_default;;
-} Primitive_Default;
+    Ang_Type und_default;
+    Ang_Type num_default;
+    Ang_Type bool_default;
+    Ang_Type string_default;
+    Ang_Type tuple_default;
+} Primitive_Types;
 
-void ctor_primitive_default(Primitive_Default *defaults);
-void dtor_primitive_default(Primitive_Default *defaults);
-
-Ang_Type primitive_ang_type(int id, const Primitive_Default *defaults);
+void ctor_primitive_types(Primitive_Types *defaults);
+void dtor_primitive_types(Primitive_Types *defaults);
 
 #endif // PRIMITIVES_H

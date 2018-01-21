@@ -25,10 +25,16 @@ void compile_grouping(Compiler *c, Ast *code);
 void compile_literal(Compiler *c, Ast *code);
 void compile_variable(Compiler *c, Ast *code);
 void compile_decl(Compiler *c, Ast *code);
+
+Ang_Type *compile_type(Compiler *c, Ast *code);
+char *construct_tuple_name(const List *types);
+Ang_Type *construct_tuple_product(const List *types, int id, char *tuple_name);
+
 void compile_block(Compiler *c, Ast *code);
 
 const Symbol *find_symbol(const Compiler *c, const char *sym);
 Ang_Type *find_type(const Compiler *c, const char *sym);
 size_t num_local(const Compiler *c);
+size_t num_types(const Compiler *c);
 
 #endif // COMPILER_H

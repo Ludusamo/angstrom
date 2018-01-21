@@ -55,7 +55,7 @@ void compile_unary_op(Compiler *c, Ast *code) {
                     TYPE_ERROR,
                     "Cannot do unary '-' operations on non-numbers.\n");
         }
-        code->eval_type = find_type(c, "num");
+        code->eval_type = find_type(c, "Num");
         append_list(&c->instr, from_double(PUSH_0));
         compile(c, get_child(code, 0));
         append_list(&c->instr, from_double(SUBF));
@@ -69,7 +69,7 @@ void compile_binary_op(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
     compile(c, get_child(code, 1));
 
-    code->eval_type = find_type(c, "num");
+    code->eval_type = find_type(c, "Num");
     if (get_child(code, 0)->eval_type->id != NUM_TYPE ||
             get_child(code, 1)->eval_type->id != NUM_TYPE) {
         error(code->assoc_token->line,
@@ -104,9 +104,9 @@ void compile_grouping(Compiler *c, Ast *code) {
 void compile_literal(Compiler *c, Ast *code) {
     Value literal = code->assoc_token->literal;
     if (code->assoc_token->type == NUM) {
-        code->eval_type = find_type(c, "num");
+        code->eval_type = find_type(c, "Num");
     } else if (code->assoc_token->type == STR) {
-        code->eval_type = find_type(c, "string");
+        code->eval_type = find_type(c, "String");
     }
     //TODO: Handle Strings
     append_list(&c->instr, from_double(PUSH));
@@ -135,19 +135,12 @@ void compile_decl(Compiler *c, Ast *code) {
         c->enc_err = 1;
         return;
     }
-    Ang_Type *type = find_type(c, "undeclared");
+    Ang_Type *type = find_type(c, "und");
     int has_assignment = 0;
     for (size_t i = 0; i < code->nodes.length; i++) {
         Ast *child = get_child(code, i);
         if (child->type == TYPE_DECL) {
-            const char *type_sym = child->assoc_token->lexeme;
-            type = find_type(c, type_sym);
-            if (!type) {
-                error(child->assoc_token->line, UNKNOWN_TYPE, type_sym);
-                fprintf(stderr, "\n");
-                c->enc_err = 1;
-                return;
-            }
+            type = compile_type(c, child);
         } else {
             has_assignment = 1;
             compile(c, child);
@@ -180,6 +173,68 @@ void compile_decl(Compiler *c, Ast *code) {
     }
     append_list(&c->instr, from_double(local ? LOAD : GLOAD));
     append_list(&c->instr, from_double(loc));
+}
+
+Ang_Type *compile_type(Compiler *c, Ast *code) {
+    const char *type_sym = code->assoc_token->lexeme;
+    Ang_Type *type = find_type(c, type_sym);
+    if (type->id == TUPLE_TYPE) {
+        List types;
+        ctor_list(&types);
+        for (size_t i = 0; i < code->nodes.length; i++) {
+            Ang_Type *child_type = compile_type(c, get_child(code, i));
+            append_list(&types, from_ptr(child_type));
+        }
+
+        char *type_name = construct_tuple_name(&types);
+
+        Ang_Type *tuple_type = get_ptr(access_hashtable(&type->slots, type_name));
+        if (!tuple_type) {
+            Ang_Type *t = construct_tuple_product(&types, num_types(c) + 1, type_name);
+            tuple_type = t;
+            set_hashtable(&type->slots, type_name, from_ptr(t));
+        } else {
+            free(type_name);
+        }
+        dtor_list(&types);
+        return tuple_type;
+    }
+    if (!type) {
+        error(code->assoc_token->line, UNKNOWN_TYPE, type_sym);
+        fprintf(stderr, "\n");
+        c->enc_err = 1;
+        return find_type(c, "und");
+    }
+    return type;
+}
+
+char *construct_tuple_name(const List *types) {
+    size_t name_size = 2 + types->length; // (type,...,type)
+    for (size_t i = 0; i < types->length; i++) {
+        name_size +=
+            strlen(((Ang_Type *) get_ptr(access_list(types, i)))->name);
+    }
+    char *type_name = calloc(name_size, sizeof(char));
+    strcat(type_name, "(");
+    for (size_t i = 0; i < types->length; i++) {
+        strcat(type_name,
+            ((Ang_Type *) get_ptr(access_list(types, i)))->name);
+        if (i + 1 < types->length) strcat(type_name, ",");
+    }
+    strcat(type_name, ")");
+    return type_name;
+}
+
+Ang_Type *construct_tuple_product(const List *types, int id, char *tuple_name) {
+    List *default_tuple = malloc(sizeof(List));
+    ctor_list(default_tuple);
+    for (size_t i = 0; i < types->length; i++) {
+        Ang_Type *child_type = get_ptr(access_list(types, i));
+        append_list(default_tuple, child_type->default_value);
+    }
+    Ang_Type *t = calloc(1, sizeof(Ang_Type));
+    ctor_ang_type(t, id, tuple_name, from_ptr(default_tuple));
+    return t;
 }
 
 void compile_block(Compiler *c, Ast *code) {
@@ -228,6 +283,15 @@ size_t num_local(const Compiler *c) {
     size_t num = 0;
     while (c) {
         if (c->parent) num += c->env.symbols.size;
+        c = c->parent;
+    }
+    return num;
+}
+
+size_t num_types(const Compiler *c) {
+    size_t num = 0;
+    while (c) {
+        num += c->env.types.size;
         c = c->parent;
     }
     return num;

@@ -3,34 +3,22 @@
 #include <stdlib.h>
 #include "list.h"
 
-Ang_Type primitive_ang_type(int id, const Primitive_Default *defaults) {
-    switch (id) {
-    case NUM_TYPE:
-        return (Ang_Type) { id, "Num",  defaults->num_default};
-    case BOOL_TYPE:
-        return (Ang_Type) { id, "Bool", defaults->bool_default };
-    case STRING_TYPE:
-        return (Ang_Type) { id, "String", defaults->string_default };
-    case TUPLE_TYPE:
-        return (Ang_Type) { id, "Tuple", defaults->tuple_default };
-    }
-    return (Ang_Type) { id, "undeclared", nil_val };
+void ctor_primitive_types(Primitive_Types *defaults) {
+    ctor_ang_type(&defaults->und_default, UNDECLARED, "Und", nil_val);
+    ctor_ang_type(&defaults->num_default, NUM_TYPE, "Num", from_double(0));
+    ctor_ang_type(&defaults->bool_default, BOOL_TYPE, "Bool", false_val);
+    ctor_ang_type(&defaults->string_default,
+        STRING_TYPE,
+        "String",
+        from_ptr(calloc(0, sizeof(char))));
+    ctor_ang_type(&defaults->tuple_default, TUPLE_TYPE, "Tuple", nil_val);
 }
 
-void ctor_primitive_default(Primitive_Default *defaults) {
-    defaults->num_default = from_double(0);
-    defaults->bool_default = false_val;
-    defaults->string_default = from_ptr(calloc(0, sizeof(char)));
-
-    List *list = malloc(sizeof(List));
-    ctor_list(list);
-    defaults->tuple_default = from_ptr(list);
-}
-
-void dtor_primitive_default(Primitive_Default *defaults) {
-    free(get_ptr(defaults->string_default));
-    List *empty_tuple = get_ptr(defaults->tuple_default);
-    dtor_list(empty_tuple);
-    free(empty_tuple);
-    empty_tuple = 0;
+void dtor_primitive_types(Primitive_Types *defaults) {
+    free(get_ptr(defaults->string_default.default_value));
+    dtor_ang_type(&defaults->und_default);
+    dtor_ang_type(&defaults->num_default);
+    dtor_ang_type(&defaults->bool_default);
+    dtor_ang_type(&defaults->string_default);
+    dtor_ang_type(&defaults->tuple_default);
 }
