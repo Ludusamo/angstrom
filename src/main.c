@@ -8,7 +8,7 @@
 #include "compiler.h"
 #include "ang_primitives.h"
 
-char *getline(void) {
+char *get_line(void) {
     char * line = malloc(100), * linep = line;
     size_t lenmax = 100, len = lenmax;
     int c;
@@ -101,7 +101,7 @@ void run_repl() {
     char *expr;
     for (;;) {
         printf("> ");
-        expr = getline();
+        expr = get_line();
         run(expr);
         free(expr);
     }
