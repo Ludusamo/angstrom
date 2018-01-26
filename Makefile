@@ -34,6 +34,10 @@ $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	$(CC) -c $(CFLAGS) $< -o $@
 	echo "Compiled "$<" successfully!"
 
+osx:
+	make
+	cp C-Data-Structures/bin/libcds.so ./bin/libcds.so
+
 clean:
 	@cd C-Data-Structures && $(MAKE) clean
 	$(RM) $(OBJECTS)
@@ -43,6 +47,7 @@ remove:
 	@cd C-Data-Structures && $(MAKE) remove
 	make clean
 	$(RM) $(BINDIR)/$(TARGET)
+	$(RM) $(BINDIR)/libcds.so
 	echo "Executable removed!"
 
 memcheck:
