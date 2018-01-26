@@ -47,6 +47,7 @@ remove:
 	@cd C-Data-Structures && $(MAKE) remove
 	make clean
 	$(RM) $(BINDIR)/$(TARGET)
+	$(RM) $(BINDIR)/libcds.so
 	echo "Executable removed!"
 
 memcheck:
