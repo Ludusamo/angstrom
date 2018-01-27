@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 #include <ctype.h>
 #include "error.h"
 
@@ -45,6 +46,12 @@ int match(Scanner *scanner, char c) {
     return 1;
 }
 
+char previous(const Scanner *scanner, int num_back) {
+    assert(num_back > 0);
+    if (scanner->current <= 0) return '\0';
+    return scanner->src[scanner->current - num_back];
+}
+
 char peek(const Scanner *scanner) {
     if (scanner->current > scanner->srclen) return '\0';
     return scanner->src[scanner->current];
@@ -76,12 +83,20 @@ Value string(Scanner *scanner) {
 }
 
 Value number(Scanner *scanner) {
+    int is_int = 0;
+    if (previous(scanner, 2) == '.') is_int = 1;
     while (isdigit(peek(scanner))) scanner->current++;
-    if (peek(scanner) == '.' && isdigit(peek_next(scanner))) {
+    if (peek(scanner) == '.' && isdigit(peek_next(scanner)) && !is_int) {
         scanner->current++;
         while (isdigit(peek(scanner))) scanner->current++;
     }
-    double val = strtod(scanner->src + scanner->start, NULL);
+
+    size_t len = scanner->current - scanner->start + 1;
+    char val_str[len];
+    strncpy(val_str, scanner->src + scanner->start, len);
+    val_str[len - 1] = 0;
+    double val = strtod(val_str, NULL);
+    printf("%lf\n", val);
     return create_token_value(NUM, scanner, from_double(val));
 }
 
