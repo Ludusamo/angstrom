@@ -24,6 +24,7 @@ void compile_binary_op(Compiler *c, Ast *code);
 void compile_grouping(Compiler *c, Ast *code);
 void compile_literal(Compiler *c, Ast *code);
 void compile_variable(Compiler *c, Ast *code);
+void compile_accessor(Compiler *c, Ast *code);
 void compile_decl(Compiler *c, Ast *code);
 
 Ang_Type *compile_type(Compiler *c, Ast *code);

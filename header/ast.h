@@ -16,6 +16,7 @@
     code(UNARY_OP) \
     code(VAR_DECL) \
     code(TYPE_DECL) \
+    code(ACCESSOR) \
     code(VARIABLE)
 
 #define DEFINE_ENUM_TYPE(type) type,
@@ -60,6 +61,7 @@ Ast *parse_decl(Parser *parser);
 Ast *parse_type(Parser *parser);
 Ast *parse_block(Parser *parser);
 Ast *parse_primary(Parser *parser);
+Ast *parse_accessor(Parser *parser, Ast *prev);
 void destroy_ast(Ast *ast);
 
 Ast *parse(const List *tokens);

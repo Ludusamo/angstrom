@@ -23,7 +23,11 @@
     code(STORET, 0) \
     code(PUSRET, 0) \
     code(CONS_TUPLE, 2) \
-    code(LOAD_TUPLE, 0)
+    code(LOAD_TUPLE, 0) \
+    code(SET_FP, 0) \
+    code(RESET_FP, 0) \
+    code(CALL, 2) \
+    code(RET, 0)
 
 #define DEFINE_ENUM_TYPE(type, _) type,
 typedef enum {

@@ -36,6 +36,9 @@ void compile(Compiler *c, Ast *code) {
     case VARIABLE:
         compile_variable(c, code);
         break;
+    case ACCESSOR:
+        compile_accessor(c, code);
+        break;
     case VAR_DECL:
         compile_decl(c, code);
         break;
@@ -114,6 +117,8 @@ void compile_literal(Compiler *c, Ast *code) {
         ctor_list(&types);
         for (int i = code->nodes.length - 1; i >= 0; i--) {
             compile(c, get_child(code, i));
+        }
+        for (int i = 0; i < code->nodes.length; i++) {
             Ang_Type *child_type = get_child(code,i)->eval_type;
             append_list(&types, from_ptr(child_type));
         }
@@ -139,6 +144,49 @@ void compile_variable(Compiler *c, Ast *code) {
     append_list(&c->instr, from_double(sym->global ? GLOAD : LOAD));
     append_list(&c->instr, from_double(sym->loc));
     code->eval_type = sym->type;
+}
+
+void compile_accessor(Compiler *c, Ast *code) {
+    compile(c, get_child(code, 0));
+    compile(c, get_child(code, 1));
+
+    append_list(&c->instr, from_double(LOAD_TUPLE));
+    const char *type = get_child(code, 1)->eval_type->name;
+    char copy[strlen(type) + 1];
+    strcpy(copy, type);
+    copy[strlen(type)] = 0;
+
+    int slot_num = get_child(code, 0)->assoc_token->literal.as_int32;
+    int skipped = 0;
+    int paren_count = 0;
+    int start = 1;
+    int end = 0;
+    for (int i = 1; i < strlen(copy); i++) {
+        switch (copy[i]) {
+        case ',':
+            if (!paren_count) {
+                skipped++;
+                if (skipped == slot_num) start = i + 1;
+            }
+            break;
+        case '(':
+            paren_count++;
+            break;
+        case ')':
+            paren_count--;
+            break;
+        default:
+            break;
+        }
+        if (skipped == slot_num + 1 || paren_count < 0) {
+            end = i;
+            break;
+        }
+    }
+    char type_name[end - start + 1];
+    strncpy(type_name, type + start, end - start);
+    type_name[end - start] = 0;
+    code->eval_type = find_type(c, type_name);
 }
 
 void compile_decl(Compiler *c, Ast *code) {
@@ -260,6 +308,7 @@ void compile_block(Compiler *c, Ast *code) {
     Compiler block;
     ctor_compiler(&block);
     block.parent = c;
+    append_list(&c->instr, from_double(SET_FP));
     for (size_t i = 0; i < code->nodes.length; i++) {
         compile(&block, get_child(code, i));
         if (i + 1 != code->nodes.length)
@@ -274,6 +323,7 @@ void compile_block(Compiler *c, Ast *code) {
         append_list(&c->instr, from_double(block.env.symbols.size));
     }
     append_list(&c->instr, from_double(PUSRET));
+    append_list(&c->instr, from_double(RESET_FP));
 
     code->eval_type = get_child(code, code->nodes.length - 1)->eval_type;
     c->enc_err = block.enc_err;
@@ -294,6 +344,13 @@ Ang_Type *find_type(const Compiler *c, const char *sym) {
     Value type = access_hashtable(&c->env.types, sym);
     if (type.bits != nil_val.bits) {
         return get_ptr(type);
+    }
+    if (!c->parent) {
+        Ang_Type *tuple = get_ptr(access_hashtable(&c->env.types, "("));
+        type = access_hashtable(&tuple->slots, sym);
+        if (type.bits != nil_val.bits) {
+            return get_ptr(type);
+        }
     }
     return find_type(c->parent, sym);
 }

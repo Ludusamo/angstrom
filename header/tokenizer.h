@@ -32,7 +32,7 @@
     code(NUM) \
     code(VAR) \
     code(FUNC) \
-    code(RET) \
+    code(RETURN) \
     code(TEOF)
 
 #define DEFINE_ENUM_TYPE(type) type,
