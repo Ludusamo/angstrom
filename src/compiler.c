@@ -36,11 +36,17 @@ void compile(Compiler *c, Ast *code) {
     case VARIABLE:
         compile_variable(c, code);
         break;
+    case KEYVAL:
+        compile_keyval(c, code);
+        break;
     case ACCESSOR:
         compile_accessor(c, code);
         break;
     case VAR_DECL:
         compile_decl(c, code);
+        break;
+    case DESTR_DECL:
+        compile_destr_decl(c, code);
         break;
     case BLOCK:
         compile_block(c, code);
@@ -146,56 +152,21 @@ void compile_variable(Compiler *c, Ast *code) {
     code->eval_type = sym->type;
 }
 
+void compile_keyval(Compiler *c, Ast *code) {
+    compile(c, get_child(code, 0));
+}
+
 void compile_accessor(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
     compile(c, get_child(code, 1));
 
     append_list(&c->instr, from_double(LOAD_TUPLE));
-    const char *type = get_child(code, 1)->eval_type->name;
-    char copy[strlen(type) + 1];
-    strcpy(copy, type);
-    copy[strlen(type)] = 0;
-
+    const Ang_Type *type = get_child(code, 1)->eval_type;
     int slot_num = get_child(code, 0)->assoc_token->literal.as_int32;
-    int skipped = 0;
-    int paren_count = 0;
-    int start = 1;
-    int end = 0;
-    for (int i = 1; i < strlen(copy); i++) {
-        switch (copy[i]) {
-        case ',':
-            if (!paren_count) {
-                skipped++;
-                if (skipped == slot_num) start = i + 1;
-            }
-            break;
-        case '(':
-            paren_count++;
-            break;
-        case ')':
-            paren_count--;
-            break;
-        default:
-            break;
-        }
-        if (skipped == slot_num + 1 || paren_count < 0) {
-            end = i;
-            break;
-        }
-    }
-    char type_name[end - start + 1];
-    strncpy(type_name, type + start, end - start);
-    type_name[end - start] = 0;
-    code->eval_type = find_type(c, type_name);
+    code->eval_type = get_slot_type(c, type, slot_num);
 }
 
 void compile_decl(Compiler *c, Ast *code) {
-    const char *sym = code->assoc_token->lexeme;
-    if (symbol_exists(&c->env, sym)) {
-        error(code->assoc_token->line, NAME_COLLISION, sym);
-        c->enc_err = 1;
-        return;
-    }
     Ang_Type *type = find_type(c, "und");
     int has_assignment = 0;
     for (size_t i = 0; i < code->nodes.length; i++) {
@@ -210,12 +181,16 @@ void compile_decl(Compiler *c, Ast *code) {
     if (!has_assignment) {
         if (type->id == NUM_TYPE) {
             append_list(&c->instr, from_double(PUSH));
+            append_list(&c->instr, type->default_value);
         } else {
             append_list(&c->instr, from_double(PUSOBJ));
             Value type_val = from_ptr(type);
             append_list(&c->instr, type_val);
+            size_t def_size = sizeof(*get_ptr(type->default_value));
+            void *cpy = malloc(def_size);
+            memcpy(cpy, get_ptr(type->default_value), def_size);
+            append_list(&c->instr, from_ptr(cpy));
         }
-        append_list(&c->instr, type->default_value);
     } else {
         if (type->id == UNDECLARED)
             type = get_child(code, 0)->eval_type;
@@ -227,6 +202,12 @@ void compile_decl(Compiler *c, Ast *code) {
     code->eval_type = type;
     int local = c->parent != 0; // If the variable is global or local
     int loc = local ? num_local(c) : c->env.symbols.size;
+    const char *sym = code->assoc_token->lexeme;
+    if (symbol_exists(&c->env, sym)) {
+        error(code->assoc_token->line, NAME_COLLISION, sym);
+        c->enc_err = 1;
+        return;
+    }
     create_symbol(&c->env, sym, type, loc, !local);
 
     if (!local) {
@@ -235,6 +216,62 @@ void compile_decl(Compiler *c, Ast *code) {
     }
     append_list(&c->instr, from_double(local ? LOAD : GLOAD));
     append_list(&c->instr, from_double(loc));
+}
+
+void compile_destr_decl(Compiler *c, Ast *code) {
+    Ang_Type *tuple_type = find_type(c, "und");
+    int has_assignment = 0;
+    for (size_t i = 1; i < code->nodes.length; i++) {
+        Ast *child = get_child(code, i);
+        if (child->type == TYPE_DECL) {
+            tuple_type = compile_type(c, child);
+        } else {
+            has_assignment = 1;
+            compile(c, child);
+        }
+    }
+    if (has_assignment) {
+        if (tuple_type->id == UNDECLARED)
+            tuple_type = get_child(code, 1)->eval_type;
+        if (tuple_type != get_child(code, 1)->eval_type) {
+            error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
+            c->enc_err = 1;
+        }
+    }
+    code->eval_type = tuple_type;
+    for (size_t i = 0; i < get_child(code, 0)->nodes.length; i++) {
+        Ang_Type *type = get_slot_type(c, tuple_type, i);
+        if (!has_assignment) {
+            if (type->id == NUM_TYPE) {
+                append_list(&c->instr, from_double(PUSH));
+                append_list(&c->instr, type->default_value);
+            } else {
+                append_list(&c->instr, from_double(PUSOBJ));
+                Value type_val = from_ptr(type);
+                append_list(&c->instr, type_val);
+                size_t def_size = sizeof(*get_ptr(type->default_value));
+                void *cpy = malloc(def_size);
+                memcpy(cpy, get_ptr(type->default_value), def_size);
+                append_list(&c->instr, from_ptr(cpy));
+            }
+        }
+        int local = c->parent != 0; // If the variable is global or local
+        int loc = local ? num_local(c) : c->env.symbols.size;
+        const char *sym = code->assoc_token->lexeme;
+        if (symbol_exists(&c->env, sym)) {
+            error(code->assoc_token->line, NAME_COLLISION, sym);
+            c->enc_err = 1;
+            return;
+        }
+        create_symbol(&c->env, sym, type, loc, !local);
+
+        if (!local) {
+            append_list(&c->instr, from_double(GSTORE));
+            append_list(&c->instr, from_double(loc));
+        }
+        append_list(&c->instr, from_double(local ? LOAD : GLOAD));
+        append_list(&c->instr, from_double(loc));
+    }
 }
 
 Ang_Type *compile_type(Compiler *c, Ast *code) {
@@ -302,6 +339,42 @@ Ang_Type *get_tuple_type(const Compiler *c, const List *types) {
         free(type_name);
     }
     return tuple_type;
+}
+
+Ang_Type *get_slot_type(const Compiler *c, const Ang_Type *tuple_type, int slot_num) {
+    const char *type = tuple_type->name;
+
+    int skipped = 0;
+    int paren_count = 0;
+    int start = 1;
+    int end = 0;
+    for (int i = 1; i < strlen(type); i++) {
+        switch (type[i]) {
+        case ',':
+            if (!paren_count) {
+                skipped++;
+                if (skipped == slot_num) start = i + 1;
+            }
+            break;
+        case '(':
+            paren_count++;
+            break;
+        case ')':
+            paren_count--;
+            break;
+        default:
+            break;
+        }
+        if (skipped == slot_num + 1 || paren_count < 0) {
+            end = i;
+            break;
+        }
+    }
+    char type_name[end - start + 1];
+    strncpy(type_name, type + start, end - start);
+    type_name[end - start] = 0;
+
+    return find_type(c, type_name);
 }
 
 void compile_block(Compiler *c, Ast *code) {

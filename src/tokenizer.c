@@ -96,7 +96,6 @@ Value number(Scanner *scanner) {
     strncpy(val_str, scanner->src + scanner->start, len);
     val_str[len - 1] = 0;
     double val = strtod(val_str, NULL);
-    printf("%lf\n", val);
     return create_token_value(NUM, scanner, from_double(val));
 }
 

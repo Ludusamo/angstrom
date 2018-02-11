@@ -31,8 +31,10 @@ void dtor_ang_env(Ang_Env *env) {
                 List *default_tuple = get_ptr(tup_type->default_value);
                 dtor_list(default_tuple);
                 free(default_tuple);
+                default_tuple = 0;
                 dtor_ang_type(tup_type);
                 free(tup_type);
+                tup_type = 0;
             }
             destroy_iter_hashtable(&tuple_iter);
         }
