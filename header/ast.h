@@ -31,7 +31,7 @@ typedef struct {
     Ast_Type type;
     List nodes;
     const Token *assoc_token;
-    Ang_Type *eval_type;
+    const Ang_Type *eval_type;
 } Ast;
 
 typedef struct {

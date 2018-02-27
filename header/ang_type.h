@@ -10,6 +10,11 @@ typedef struct {
     Hashtable slots;
 } Ang_Type;
 
+typedef struct {
+    int index;
+    const Ang_Type *type;
+} Ang_Slot;
+
 void ctor_ang_type(Ang_Type *type, int id, const char *name, Value default_val);
 void dtor_ang_type(Ang_Type *type);
 

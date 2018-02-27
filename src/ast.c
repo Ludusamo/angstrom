@@ -226,8 +226,13 @@ Ast *parse_destr_decl(Parser *parser) {
 Ast *parse_type(Parser *parser) {
     if (match_token(parser, IDENT)) {
         Ast *expr = calloc(1, sizeof(Ast));
-        expr->type = TYPE_DECL;
         expr->assoc_token = previous_token(parser);
+        if (match_token(parser, COLON)) {
+            expr->type = KEYVAL;
+            append_list(&expr->nodes, from_ptr(parse_type(parser)));
+            return expr;
+        }
+        expr->type = TYPE_DECL;
         ctor_list(&expr->nodes);
         return expr;
     } else if (match_token(parser, LPAREN)) {
@@ -358,8 +363,8 @@ Ast *parse_accessor(Parser *parser, Ast *prev) {
         slot->assoc_token = previous_token(parser);
         print_token(slot->assoc_token);
         ctor_list(&slot->nodes);
-        append_list(&acc_node->nodes, from_ptr(slot));
         append_list(&acc_node->nodes, from_ptr(prev));
+        append_list(&acc_node->nodes, from_ptr(slot));
         prev = acc_node;
     }
     return prev;

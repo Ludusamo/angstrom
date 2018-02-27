@@ -19,7 +19,7 @@ CFLAGS = -std=c99 -Wall -Iheader -IC-Data-Structures/header
 
 TEST_CFLAGS = -std=c99 -Wall -Iheader -Iheader/test
 
-LINKER_FLAGS = -Wall -Iheader
+LINKER_FLAGS = -Wall -Iheader -lm
 
 TARGET = angstrom
 

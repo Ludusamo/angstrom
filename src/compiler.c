@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "error.h"
 #include "ang_primitives.h"
+#include "utility.h"
 
 void ctor_compiler(Compiler *compiler) {
     ctor_list(&compiler->instr);
@@ -119,19 +120,41 @@ void compile_literal(Compiler *c, Ast *code) {
     } else if (code->assoc_token->type == STR) {
         code->eval_type = find_type(c, "String");
     } else if (code->assoc_token->type == LPAREN) {
-        List types;
-        ctor_list(&types);
+        int is_record = get_child(code, 0)->type == KEYVAL;
         for (int i = code->nodes.length - 1; i >= 0; i--) {
+            if (is_record && get_child(code, i)->type != KEYVAL) {
+                error(code->assoc_token->line,
+                    INCOMPLETE_RECORD,
+                    "Record type needs all members to be key value pairs.\n");
+                c->enc_err = 1;
+                return;
+            }
             compile(c, get_child(code, i));
         }
+        List types;
+        ctor_list(&types);
+        List slots;
+        ctor_list(&slots);
         for (int i = 0; i < code->nodes.length; i++) {
-            Ang_Type *child_type = get_child(code,i)->eval_type;
-            append_list(&types, from_ptr(child_type));
+            const Ang_Type *child_type = get_child(code, i)->eval_type;
+            append_list(&types, from_ptr((void *) child_type));
+            if (is_record) {
+                const char *slot_name = get_child(code, i)->assoc_token->lexeme;
+                char *slot_name_cpy = calloc(strlen(slot_name) + 1, sizeof(char));
+                strcpy(slot_name_cpy, slot_name);
+                append_list(&slots, from_ptr(slot_name_cpy));
+            } else {
+                // Populating slots with slot number
+                char *slot_num = calloc(num_digits(i) + 1, sizeof(char));
+                sprintf(slot_num, "%d", i);
+                append_list(&slots, from_ptr(slot_num));
+            }
         }
-        code->eval_type = get_tuple_type(c, &types);
+        code->eval_type = get_tuple_type(c, &slots, &types);
         dtor_list(&types);
+        dtor_list(&slots);
         append_list(&c->instr, from_double(CONS_TUPLE));
-        append_list(&c->instr, from_ptr(code->eval_type));
+        append_list(&c->instr, from_ptr((void *) code->eval_type));
         append_list(&c->instr, from_double(code->nodes.length));
     }
     //TODO: Handle Strings
@@ -154,20 +177,24 @@ void compile_variable(Compiler *c, Ast *code) {
 
 void compile_keyval(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
+    code->eval_type = get_child(code, 0)->eval_type;
 }
 
 void compile_accessor(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
-    compile(c, get_child(code, 1));
+    const Ang_Type *type = get_child(code, 0)->eval_type;
+    const char *slot_name = get_child(code, 1)->assoc_token->lexeme;
+    Ang_Slot *slot = get_ptr(access_hashtable(&type->slots, slot_name));
+    int slot_num = slot->index;
+    code->eval_type = slot->type;
 
+    append_list(&c->instr, from_double(PUSH));
+    append_list(&c->instr, from_double(slot_num));
     append_list(&c->instr, from_double(LOAD_TUPLE));
-    const Ang_Type *type = get_child(code, 1)->eval_type;
-    int slot_num = get_child(code, 0)->assoc_token->literal.as_int32;
-    code->eval_type = get_slot_type(c, type, slot_num);
 }
 
 void compile_decl(Compiler *c, Ast *code) {
-    Ang_Type *type = find_type(c, "und");
+    const Ang_Type *type = find_type(c, "und");
     int has_assignment = 0;
     for (size_t i = 0; i < code->nodes.length; i++) {
         Ast *child = get_child(code, i);
@@ -184,7 +211,7 @@ void compile_decl(Compiler *c, Ast *code) {
             append_list(&c->instr, type->default_value);
         } else {
             append_list(&c->instr, from_double(PUSOBJ));
-            Value type_val = from_ptr(type);
+            Value type_val = from_ptr((void *) type);
             append_list(&c->instr, type_val);
             size_t def_size = sizeof(*get_ptr(type->default_value));
             void *cpy = malloc(def_size);
@@ -219,7 +246,7 @@ void compile_decl(Compiler *c, Ast *code) {
 }
 
 void compile_destr_decl(Compiler *c, Ast *code) {
-    Ang_Type *tuple_type = find_type(c, "und");
+    const Ang_Type *tuple_type = find_type(c, "und");
     int has_assignment = 0;
     for (size_t i = 1; i < code->nodes.length; i++) {
         Ast *child = get_child(code, i);
@@ -275,18 +302,34 @@ void compile_destr_decl(Compiler *c, Ast *code) {
 }
 
 Ang_Type *compile_type(Compiler *c, Ast *code) {
+    if (code->type == KEYVAL) return compile_type(c, get_child(code, 0));
     const char *type_sym = code->assoc_token->lexeme;
     Ang_Type *type = find_type(c, type_sym);
     if (type->id == TUPLE_TYPE) {
         List types;
         ctor_list(&types);
+        List slots;
+        ctor_list(&slots);
         for (size_t i = 0; i < code->nodes.length; i++) {
             Ang_Type *child_type = compile_type(c, get_child(code, i));
             append_list(&types, from_ptr(child_type));
+
+            // Populating slots with slot number
+            if (get_child(code, i)->type == KEYVAL) {
+                const char *slot_name = get_child(code, i)->assoc_token->lexeme;
+                char *slot_name_cpy = calloc(strlen(slot_name) + 1, sizeof(char));
+                strcpy(slot_name_cpy, slot_name);
+                append_list(&slots, from_ptr(slot_name_cpy));
+            } else {
+                char *slot_num = calloc(num_digits(i) + 1, sizeof(char));
+                sprintf(slot_num, "%lx", i);
+                append_list(&slots, from_ptr(slot_num));
+            }
         }
 
-        Ang_Type *tuple_type = get_tuple_type(c, &types);
+        Ang_Type *tuple_type = get_tuple_type(c, &slots, &types);
         dtor_list(&types);
+        dtor_list(&slots);
         return tuple_type;
     }
     if (!type) {
@@ -298,8 +341,12 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
     return type;
 }
 
-char *construct_tuple_name(const List *types) {
-    size_t name_size = 2 + types->length; // (type,...,type)
+char *construct_tuple_name(const List *slots, const List *types) {
+    // (slot:type,...,slot:type)
+    size_t name_size = 2 + types->length + slots->length;
+    for (size_t i = 0; i < slots->length; i++) {
+        name_size += strlen(((char *) get_ptr(access_list(slots, i))));
+    }
     for (size_t i = 0; i < types->length; i++) {
         name_size +=
             strlen(((Ang_Type *) get_ptr(access_list(types, i)))->name);
@@ -307,6 +354,10 @@ char *construct_tuple_name(const List *types) {
     char *type_name = calloc(name_size, sizeof(char));
     strcat(type_name, "(");
     for (size_t i = 0; i < types->length; i++) {
+        if (slots->length) {
+            strcat(type_name, get_ptr(access_list(slots, i)));
+            strcat(type_name, ":");
+        }
         strcat(type_name,
             ((Ang_Type *) get_ptr(access_list(types, i)))->name);
         if (i + 1 < types->length) strcat(type_name, ",");
@@ -315,7 +366,7 @@ char *construct_tuple_name(const List *types) {
     return type_name;
 }
 
-Ang_Type *construct_tuple_product(const List *types, int id, char *tuple_name) {
+Ang_Type *construct_tuple(const List *slots, const List *types, int id, char *tuple_name) {
     List *default_tuple = malloc(sizeof(List));
     ctor_list(default_tuple);
     for (size_t i = 0; i < types->length; i++) {
@@ -324,57 +375,27 @@ Ang_Type *construct_tuple_product(const List *types, int id, char *tuple_name) {
     }
     Ang_Type *t = calloc(1, sizeof(Ang_Type));
     ctor_ang_type(t, id, tuple_name, from_ptr(default_tuple));
+    for (size_t i = 0; i < slots->length; i++) {
+        Ang_Slot *slot = calloc(1, sizeof(Ang_Slot));
+        slot->index = i;
+        slot->type = get_ptr(access_list(types, i));
+        set_hashtable(&t->slots, get_ptr(access_list(slots, i)), from_ptr(slot));
+    }
     return t;
 }
 
-Ang_Type *get_tuple_type(const Compiler *c, const List *types) {
+Ang_Type *get_tuple_type(const Compiler *c, const List *slots, const List *types) {
     Ang_Type *tuple = find_type(c, "(");
-    char *type_name = construct_tuple_name(types);
+    char *type_name = construct_tuple_name(slots, types);
     Ang_Type *tuple_type = get_ptr(access_hashtable(&tuple->slots, type_name));
     if (!tuple_type) {
-        Ang_Type *t = construct_tuple_product(types, num_types(c) + 1, type_name);
+        Ang_Type *t = construct_tuple(slots, types, num_types(c) + 1, type_name);
         tuple_type = t;
         set_hashtable(&tuple->slots, type_name, from_ptr(t));
     } else {
         free(type_name);
     }
     return tuple_type;
-}
-
-Ang_Type *get_slot_type(const Compiler *c, const Ang_Type *tuple_type, int slot_num) {
-    const char *type = tuple_type->name;
-
-    int skipped = 0;
-    int paren_count = 0;
-    int start = 1;
-    int end = 0;
-    for (int i = 1; i < strlen(type); i++) {
-        switch (type[i]) {
-        case ',':
-            if (!paren_count) {
-                skipped++;
-                if (skipped == slot_num) start = i + 1;
-            }
-            break;
-        case '(':
-            paren_count++;
-            break;
-        case ')':
-            paren_count--;
-            break;
-        default:
-            break;
-        }
-        if (skipped == slot_num + 1 || paren_count < 0) {
-            end = i;
-            break;
-        }
-    }
-    char type_name[end - start + 1];
-    strncpy(type_name, type + start, end - start);
-    type_name[end - start] = 0;
-
-    return find_type(c, type_name);
 }
 
 void compile_block(Compiler *c, Ast *code) {

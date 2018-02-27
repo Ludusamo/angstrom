@@ -32,10 +32,9 @@ void compile_destr_decl(Compiler *c, Ast *code);
 void compile_destr_decl_helper(Compiler *c, Ast *lhs, Ast *rhs);
 
 Ang_Type *compile_type(Compiler *c, Ast *code);
-char *construct_tuple_name(const List *types);
-Ang_Type *construct_tuple_product(const List *types, int id, char *tuple_name);
-Ang_Type *get_tuple_type(const Compiler *c, const List *types);
-Ang_Type *get_slot_type(const Compiler *c, const Ang_Type *tuple_type, int slot_num);
+char *construct_tuple_name(const List *slots, const List *types);
+Ang_Type *construct_tuple(const List *slots, const List *types, int id, char *tuple_name);
+Ang_Type *get_tuple_type(const Compiler *c, const List *slots, const List *types);
 
 void compile_block(Compiler *c, Ast *code);
 

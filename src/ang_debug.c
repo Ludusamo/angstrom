@@ -1,13 +1,5 @@
 #include "ang_debug.h"
-
-int num_digits(int num) {
-    int count = 1;
-    while (num >= 10) {
-        num /= 10;
-        count++;
-    }
-    return count;
-}
+#include "utility.h"
 
 void print_stack_trace(const Ang_VM *vm) {
     int op = fetch(vm);

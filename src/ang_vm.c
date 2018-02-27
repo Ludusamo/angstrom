@@ -119,8 +119,8 @@ void eval(Ang_VM *vm) {
         break;
     }
     case LOAD_TUPLE: {
-        Ang_Obj *tuple = pop_stack(&vm->mem);
         int slot_num = pop_int(&vm->mem);
+        Ang_Obj *tuple = pop_stack(&vm->mem);
         Ang_Obj *obj = get_ptr(access_list(get_ptr(tuple->v), slot_num));
         push_stack(&vm->mem, obj);
         break;
