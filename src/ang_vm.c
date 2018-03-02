@@ -131,6 +131,15 @@ void eval(Ang_VM *vm) {
     case RESET_FP:
         vm->mem.fp = 0;
         break;
+    case DUP:
+        push_stack(&vm->mem, vm->mem.stack[vm->mem.sp - 1]);
+        break;
+    case MOV_REG:
+        vm->mem.registers[get_next_op(vm).as_int32] = pop_stack(&vm->mem);
+        break;
+    case PUSH_REG:
+        push_stack(&vm->mem, vm->mem.registers[get_next_op(vm).as_int32]);
+        break;
     case CALL: {
         int ip = get_next_op(vm).as_int32;
         int num_args = get_next_op(vm).as_int32;

@@ -5,6 +5,7 @@
 #include "error.h"
 #include "ang_primitives.h"
 #include "utility.h"
+#include "ang_mem.h"
 
 void ctor_compiler(Compiler *compiler) {
     ctor_list(&compiler->instr);
@@ -264,40 +265,67 @@ void compile_destr_decl(Compiler *c, Ast *code) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
             c->enc_err = 1;
         }
+        append_list(&c->instr, from_double(MOV_REG));
+        append_list(&c->instr, from_double(A));
     }
     code->eval_type = tuple_type;
-    for (size_t i = 0; i < get_child(code, 0)->nodes.length; i++) {
-        Ang_Type *type = get_slot_type(c, tuple_type, i);
+
+    Ast *syms = get_child(code, 0);
+    Iter ih;
+    iter_hashtable(&ih, &tuple_type->slots);
+    foreach (ih) {
+        Keyval *kv = get_ptr(val_iter_hashtable(&ih));
+        Ang_Slot *slot = get_ptr(kv->val);
+        int slot_num = slot->index;
+
         if (!has_assignment) {
-            if (type->id == NUM_TYPE) {
+            if (slot->type->id == NUM_TYPE) {
                 append_list(&c->instr, from_double(PUSH));
-                append_list(&c->instr, type->default_value);
+                append_list(&c->instr, slot->type->default_value);
             } else {
                 append_list(&c->instr, from_double(PUSOBJ));
-                Value type_val = from_ptr(type);
+                Value type_val = from_ptr((void *) slot->type);
                 append_list(&c->instr, type_val);
-                size_t def_size = sizeof(*get_ptr(type->default_value));
+                size_t def_size = sizeof(*get_ptr(slot->type->default_value));
                 void *cpy = malloc(def_size);
-                memcpy(cpy, get_ptr(type->default_value), def_size);
+                memcpy(cpy, get_ptr(slot->type->default_value), def_size);
                 append_list(&c->instr, from_ptr(cpy));
             }
+        } else {
+            append_list(&c->instr, from_double(PUSH_REG));
+            append_list(&c->instr, from_double(A));
+            append_list(&c->instr, from_double(PUSH));
+            append_list(&c->instr, from_double(slot_num));
+            append_list(&c->instr, from_double(LOAD_TUPLE));
         }
         int local = c->parent != 0; // If the variable is global or local
         int loc = local ? num_local(c) : c->env.symbols.size;
-        const char *sym = code->assoc_token->lexeme;
+
+        const char *sym = get_child(syms, slot_num)->assoc_token->lexeme;
         if (symbol_exists(&c->env, sym)) {
             error(code->assoc_token->line, NAME_COLLISION, sym);
             c->enc_err = 1;
             return;
         }
-        create_symbol(&c->env, sym, type, loc, !local);
+        create_symbol(&c->env, sym, slot->type, loc, !local);
 
         if (!local) {
             append_list(&c->instr, from_double(GSTORE));
             append_list(&c->instr, from_double(loc));
         }
-        append_list(&c->instr, from_double(local ? LOAD : GLOAD));
-        append_list(&c->instr, from_double(loc));
+    }
+    destroy_iter_hashtable(&ih);
+    if (has_assignment) {
+        append_list(&c->instr, from_double(PUSH_REG));
+        append_list(&c->instr, from_double(A));
+    } else {
+        append_list(&c->instr, from_double(PUSOBJ));
+        Value type_val = from_ptr((void *) tuple_type);
+        append_list(&c->instr, type_val);
+        size_t def_size = sizeof(*get_ptr(tuple_type->default_value));
+        void *cpy = malloc(def_size);
+        memcpy(cpy, get_ptr(tuple_type->default_value), def_size);
+        append_list(&c->instr, from_ptr(cpy));
     }
 }
 

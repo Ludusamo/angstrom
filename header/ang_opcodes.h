@@ -26,6 +26,9 @@
     code(LOAD_TUPLE, 0) \
     code(SET_FP, 0) \
     code(RESET_FP, 0) \
+    code(DUP, 0) \
+    code(MOV_REG, 1) \
+    code(PUSH_REG, 1) \
     code(CALL, 2) \
     code(RET, 0)
 
