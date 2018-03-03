@@ -207,18 +207,7 @@ void compile_decl(Compiler *c, Ast *code) {
         }
     }
     if (!has_assignment) {
-        if (type->id == NUM_TYPE) {
-            append_list(&c->instr, from_double(PUSH));
-            append_list(&c->instr, type->default_value);
-        } else {
-            append_list(&c->instr, from_double(PUSOBJ));
-            Value type_val = from_ptr((void *) type);
-            append_list(&c->instr, type_val);
-            size_t def_size = sizeof(*get_ptr(type->default_value));
-            void *cpy = malloc(def_size);
-            memcpy(cpy, get_ptr(type->default_value), def_size);
-            append_list(&c->instr, from_ptr(cpy));
-        }
+        push_default_value(c, type);
     } else {
         if (type->id == UNDECLARED)
             type = get_child(code, 0)->eval_type;
@@ -279,18 +268,7 @@ void compile_destr_decl(Compiler *c, Ast *code) {
         int slot_num = slot->index;
 
         if (!has_assignment) {
-            if (slot->type->id == NUM_TYPE) {
-                append_list(&c->instr, from_double(PUSH));
-                append_list(&c->instr, slot->type->default_value);
-            } else {
-                append_list(&c->instr, from_double(PUSOBJ));
-                Value type_val = from_ptr((void *) slot->type);
-                append_list(&c->instr, type_val);
-                size_t def_size = sizeof(*get_ptr(slot->type->default_value));
-                void *cpy = malloc(def_size);
-                memcpy(cpy, get_ptr(slot->type->default_value), def_size);
-                append_list(&c->instr, from_ptr(cpy));
-            }
+            push_default_value(c, slot->type);
         } else {
             append_list(&c->instr, from_double(PUSH_REG));
             append_list(&c->instr, from_double(A));
@@ -322,9 +300,10 @@ void compile_destr_decl(Compiler *c, Ast *code) {
         append_list(&c->instr, from_double(PUSOBJ));
         Value type_val = from_ptr((void *) tuple_type);
         append_list(&c->instr, type_val);
-        size_t def_size = sizeof(*get_ptr(tuple_type->default_value));
-        void *cpy = malloc(def_size);
-        memcpy(cpy, get_ptr(tuple_type->default_value), def_size);
+        List *obj = get_ptr(tuple_type->default_value);
+        List *cpy = malloc(sizeof(List));
+        ctor_list(cpy);
+        copy_list(obj, cpy);
         append_list(&c->instr, from_ptr(cpy));
     }
 }
@@ -450,6 +429,22 @@ void compile_block(Compiler *c, Ast *code) {
     code->eval_type = get_child(code, code->nodes.length - 1)->eval_type;
     c->enc_err = block.enc_err;
     dtor_compiler(&block);
+}
+
+void push_default_value(Compiler *c, const Ang_Type *t) {
+    if (t->id == NUM_TYPE) {
+        append_list(&c->instr, from_double(PUSH));
+        append_list(&c->instr, t->default_value);
+    } else {
+        append_list(&c->instr, from_double(PUSOBJ));
+        Value type_val = from_ptr((void *) t);
+        append_list(&c->instr, type_val);
+        List *obj = get_ptr(t->default_value);
+        List *cpy = malloc(sizeof(List));
+        ctor_list(cpy);
+        copy_list(obj, cpy);
+        append_list(&c->instr, from_ptr(cpy));
+    }
 }
 
 const Symbol *find_symbol(const Compiler *c, const char *sym) {

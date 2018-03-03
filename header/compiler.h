@@ -38,6 +38,8 @@ Ang_Type *get_tuple_type(const Compiler *c, const List *slots, const List *types
 
 void compile_block(Compiler *c, Ast *code);
 
+void push_default_value(Compiler *c, const Ang_Type *t);
+
 const Symbol *find_symbol(const Compiler *c, const char *sym);
 Ang_Type *find_type(const Compiler *c, const char *sym);
 size_t num_local(const Compiler *c);
