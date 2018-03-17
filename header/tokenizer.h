@@ -14,6 +14,7 @@
     code(RBRACK) \
     code(COMMA) \
     code(COLON) \
+    code(UNDERSCORE) \
     code(DOT) \
     code(MINUS) \
     code(PLUS) \
@@ -65,7 +66,6 @@ const char *copy_cur_lexeme(const Scanner *scanner);
 void add_token(List *t_list, const Scanner *scanner,
                Token_Type t, const Value literal);
 int match(Scanner *scanner, char t);
-char previous(const Scanner *scanner, int num_back);
 char peek(const Scanner *scanner);
 char peek_next(const Scanner *scanner);
 Value string(Scanner *scanner);
