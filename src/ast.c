@@ -206,6 +206,11 @@ Ast *parse_destr_decl(Parser *parser) {
             ident->type = VARIABLE;
             ident->assoc_token = previous_token(parser);
             append_list(&literal_node->nodes, from_ptr(ident));
+        } else if (match_token(parser, UNDERSCORE)) {
+            Ast *ident = calloc(1, sizeof(Ast));
+            ident->type = WILDCARD;
+            ident->assoc_token = previous_token(parser);
+            append_list(&literal_node->nodes, from_ptr(ident));
         } else if (peek_token(parser, 1)->type == LPAREN) {
             append_list(&literal_node->nodes, from_ptr(parse_destr_decl(parser)));
         } else {

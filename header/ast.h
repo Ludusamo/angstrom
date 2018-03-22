@@ -19,6 +19,7 @@
     code(TYPE_DECL) \
     code(ACCESSOR) \
     code(VARIABLE) \
+    code(WILDCARD) \
     code(KEYVAL)
 
 #define DEFINE_ENUM_TYPE(type) type,
