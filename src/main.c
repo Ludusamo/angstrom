@@ -58,15 +58,15 @@ void run(const char *exp) {
     }
     if (!parser.enc_err) {
 
+        Primitive_Types defaults;
+        ctor_primitive_types(&defaults);
         // Compile
         Compiler c;
         ctor_compiler(&c);
-        Ang_Type und = primitive_ang_type(UNDECLARED);
-        set_hashtable(&c.env.types, "undeclared", from_ptr(&und));
-        Ang_Type num = primitive_ang_type(NUM_TYPE);
-        set_hashtable(&c.env.types, "num", from_ptr(&num));
-        Ang_Type bool = primitive_ang_type(BOOL_TYPE);
-        set_hashtable(&c.env.types, "bool", from_ptr(&bool));
+        set_hashtable(&c.env.types, "und", from_ptr(&defaults.und_default));
+        set_hashtable(&c.env.types, "Num", from_ptr(&defaults.num_default));
+        set_hashtable(&c.env.types, "Bool", from_ptr(&defaults.bool_default));
+        set_hashtable(&c.env.types, "(", from_ptr(&defaults.tuple_default));
         compile(&c, ast);
 
         if (!c.enc_err) {
@@ -83,6 +83,7 @@ void run(const char *exp) {
             dtor_ang_vm(&vm);
         }
         dtor_compiler(&c);
+        dtor_primitive_types(&defaults);
     }
 
     // Cleanup

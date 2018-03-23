@@ -19,11 +19,11 @@ typedef struct {
 void ctor_ang_vm(Ang_VM *vm, size_t gmem_size);
 void dtor_ang_vm(Ang_VM *vm);
 
-int get_next_op(Ang_VM *vm);
+Value get_next_op(Ang_VM *vm);
 void eval(Ang_VM *vm);
 int fetch(const Ang_VM *vm);
 
-int emit_op(Ang_VM *vm, int instruction);
+int emit_op(Ang_VM *vm, Value op);
 
 void push_num_stack(Ang_VM *vm, double num);
 

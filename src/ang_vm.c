@@ -18,8 +18,8 @@ void dtor_ang_vm(Ang_VM *vm) {
     dtor_list(&vm->prog);
 }
 
-int get_next_op(Ang_VM *vm) {
-    return access_list(&vm->prog, vm->mem.ip++).as_int32;
+Value get_next_op(Ang_VM *vm) {
+    return access_list(&vm->prog, vm->mem.ip++);
 }
 
 void eval(Ang_VM *vm) {
@@ -31,8 +31,14 @@ void eval(Ang_VM *vm) {
         vm->running = 0;
         break;
     case PUSH:
-        push_num_stack(vm, get_next_op(vm));
+        push_num_stack(vm, get_next_op(vm).as_int32);
         break;
+    case PUSOBJ: {
+        Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
+        obj->v = get_next_op(vm);
+        push_stack(&vm->mem, obj);
+        break;
+    }
     case PUSH_0:
         push_num_stack(vm, 0);
         break;
@@ -40,7 +46,7 @@ void eval(Ang_VM *vm) {
         pop_stack(&vm->mem);
         break;
     case POPN: {
-        int num_local = get_next_op(vm);
+        int num_local = get_next_op(vm).as_int32;
         for (int i = 0; i < num_local; i++) {
             pop_stack(&vm->mem);
         }
@@ -83,16 +89,16 @@ void eval(Ang_VM *vm) {
         break;
     }
     case GSTORE:
-        vm->mem.gmem[get_next_op(vm)] = pop_stack(&vm->mem);
+        vm->mem.gmem[get_next_op(vm).as_int32] = pop_stack(&vm->mem);
         break;
     case GLOAD:
-        push_stack(&vm->mem, vm->mem.gmem[get_next_op(vm)]);
+        push_stack(&vm->mem, vm->mem.gmem[get_next_op(vm).as_int32]);
         break;
     case STORE:
-        vm->mem.stack[vm->mem.fp + get_next_op(vm)] = pop_stack(&vm->mem);
+        vm->mem.stack[vm->mem.fp + get_next_op(vm).as_int32] = pop_stack(&vm->mem);
         break;
     case LOAD:
-        push_stack(&vm->mem, vm->mem.stack[vm->mem.fp + get_next_op(vm)]);
+        push_stack(&vm->mem, vm->mem.stack[vm->mem.fp + get_next_op(vm).as_int32]);
         break;
     case STORET:
         vm->mem.registers[RET_VAL] = pop_stack(&vm->mem);
@@ -100,6 +106,57 @@ void eval(Ang_VM *vm) {
     case PUSRET:
         push_stack(&vm->mem, vm->mem.registers[RET_VAL]);
         break;
+    case CONS_TUPLE: {
+        Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
+        List *tuple_vals = malloc(sizeof(List));
+        ctor_list(tuple_vals);
+        int num_slots = get_next_op(vm).as_int32;
+        for (int i = 0; i < num_slots; i++) {
+            append_list(tuple_vals, from_ptr(pop_stack(&vm->mem)));
+        }
+        obj->v = from_ptr(tuple_vals);
+        push_stack(&vm->mem, obj);
+        break;
+    }
+    case LOAD_TUPLE: {
+        int slot_num = pop_int(&vm->mem);
+        Ang_Obj *tuple = pop_stack(&vm->mem);
+        Ang_Obj *obj = get_ptr(access_list(get_ptr(tuple->v), slot_num));
+        push_stack(&vm->mem, obj);
+        break;
+    }
+    case SET_FP:
+        vm->mem.fp = vm->mem.sp;
+        break;
+    case RESET_FP:
+        vm->mem.fp = 0;
+        break;
+    case DUP:
+        push_stack(&vm->mem, vm->mem.stack[vm->mem.sp - 1]);
+        break;
+    case MOV_REG:
+        vm->mem.registers[get_next_op(vm).as_int32] = pop_stack(&vm->mem);
+        break;
+    case PUSH_REG:
+        push_stack(&vm->mem, vm->mem.registers[get_next_op(vm).as_int32]);
+        break;
+    case CALL: {
+        int ip = get_next_op(vm).as_int32;
+        int num_args = get_next_op(vm).as_int32;
+        push_num_stack(vm, num_args);
+        push_num_stack(vm, vm->mem.fp);
+        push_num_stack(vm, vm->mem.ip);
+        vm->mem.fp = vm->mem.sp;
+        vm->mem.ip = ip;
+        break;
+    }
+    case RET:
+        vm->mem.registers[RET_VAL] = pop_stack(&vm->mem);
+        vm->mem.sp = vm->mem.fp;
+        vm->mem.ip = pop_stack(&vm->mem)->v.as_int32;
+        vm->mem.fp = pop_stack(&vm->mem)->v.as_int32;
+        vm->mem.sp -= pop_stack(&vm->mem)->v.as_int32;
+        push_stack(&vm->mem, vm->mem.registers[RET_VAL]);
     }
 }
 
@@ -107,13 +164,13 @@ int fetch(const Ang_VM *vm) {
     return access_list(&vm->prog, vm->mem.ip).as_int32;
 }
 
-int emit_op(Ang_VM *vm, int op) {
-    append_list(&vm->prog, from_double(op));
+int emit_op(Ang_VM *vm, Value op) {
+    append_list(&vm->prog, op);
     return vm->prog.length;
 }
 
 void push_num_stack(Ang_VM *vm, double num) {
-    Ang_Obj *obj = new_object(&vm->mem, find_type(vm->compiler, "num"));
+    Ang_Obj *obj = new_object(&vm->mem, find_type(vm->compiler, "Num"));
     obj->v = from_double(num);
     push_stack(&vm->mem, obj);
 }
@@ -122,7 +179,7 @@ void run_compiled_instructions(Ang_VM *vm, Compiler *c) {
     vm->compiler = c;
     int last_op = 0;
     for (size_t i = 0; i < c->instr.length; i++) {
-        last_op = emit_op(vm, access_list(&c->instr, i).as_int32);
+        last_op = emit_op(vm, access_list(&c->instr, i));
     }
     while (vm->mem.ip < last_op) eval(vm);
 }

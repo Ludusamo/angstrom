@@ -15,8 +15,12 @@
     code(MUL_OP) \
     code(UNARY_OP) \
     code(VAR_DECL) \
+    code(DESTR_DECL) \
     code(TYPE_DECL) \
-    code(VARIABLE)
+    code(ACCESSOR) \
+    code(VARIABLE) \
+    code(WILDCARD) \
+    code(KEYVAL)
 
 #define DEFINE_ENUM_TYPE(type) type,
 typedef enum {
@@ -28,7 +32,7 @@ typedef struct {
     Ast_Type type;
     List nodes;
     const Token *assoc_token;
-    Ang_Type *eval_type;
+    const Ang_Type *eval_type;
 } Ast;
 
 typedef struct {
@@ -41,7 +45,7 @@ const char *ast_type_to_str(Ast_Type t);
 void print_ast(const Ast *ast, int depth);
 
 const Token *advance_token(Parser *parser);
-const Token *peek_token(const Parser *parser);
+const Token *peek_token(const Parser *parser, int peek);
 const Token *previous_token(const Parser *parser);
 int check(const Parser *parser, Token_Type type);
 int match_token(Parser *parser, Token_Type type);
@@ -57,10 +61,11 @@ Ast *parse_addition(Parser *parser);
 Ast *parse_multiplication(Parser *parser);
 Ast *parse_unary(Parser *parser);
 Ast *parse_decl(Parser *parser);
+Ast *parse_destr_decl(Parser *parser);
 Ast *parse_type(Parser *parser);
 Ast *parse_block(Parser *parser);
 Ast *parse_primary(Parser *parser);
-Ast *parse_literal(Parser *parser);
+Ast *parse_accessor(Parser *parser, Ast *prev);
 void destroy_ast(Ast *ast);
 
 Ast *parse(const List *tokens);

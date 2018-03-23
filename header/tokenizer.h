@@ -14,6 +14,7 @@
     code(RBRACK) \
     code(COMMA) \
     code(COLON) \
+    code(UNDERSCORE) \
     code(DOT) \
     code(MINUS) \
     code(PLUS) \
@@ -32,7 +33,7 @@
     code(NUM) \
     code(VAR) \
     code(FUNC) \
-    code(RET) \
+    code(RETURN) \
     code(TEOF)
 
 #define DEFINE_ENUM_TYPE(type) type,

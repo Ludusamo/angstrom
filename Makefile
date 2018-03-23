@@ -19,7 +19,7 @@ CFLAGS = -std=c99 -Wall -Iheader -IC-Data-Structures/header
 
 TEST_CFLAGS = -std=c99 -Wall -Iheader -Iheader/test
 
-LINKER_FLAGS = -Wall -Iheader
+LINKER_FLAGS = -Wall -Iheader -lm
 
 TARGET = angstrom
 
@@ -37,6 +37,10 @@ $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
 osx:
 	make
 	cp C-Data-Structures/bin/libcds.so ./bin/libcds.so
+	
+termux:
+	make
+	cp C-Data-Structures/bin/libcds.so ~/../usr/lib/libcds.so
 
 clean:
 	@cd C-Data-Structures && $(MAKE) clean

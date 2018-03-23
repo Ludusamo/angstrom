@@ -4,6 +4,7 @@
 #define OPCODES(code) \
     code(HALT, 0) \
     code(PUSH, 1) \
+    code(PUSOBJ, 2) \
     code(PUSH_0, 0) \
     code(POP, 0) \
     code(POPN, 1) \
@@ -20,7 +21,16 @@
     code(STORE, 1) \
     code(LOAD, 1) \
     code(STORET, 0) \
-    code(PUSRET, 0)
+    code(PUSRET, 0) \
+    code(CONS_TUPLE, 2) \
+    code(LOAD_TUPLE, 0) \
+    code(SET_FP, 0) \
+    code(RESET_FP, 0) \
+    code(DUP, 0) \
+    code(MOV_REG, 1) \
+    code(PUSH_REG, 1) \
+    code(CALL, 2) \
+    code(RET, 0)
 
 #define DEFINE_ENUM_TYPE(type, _) type,
 typedef enum {

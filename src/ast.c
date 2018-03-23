@@ -13,6 +13,7 @@ const char *ast_type_to_str(Ast_Type t) {
 #undef DEFINE_CODE_STRING
 
 void print_ast(const Ast *ast, int depth) {
+    if (!ast) return;
     printf("%*s%s\n", depth * 4, "", ast_type_to_str(ast->type));
     for (size_t i = 0; i < ast->nodes.length; i++) {
         print_ast((Ast *) get_ptr(access_list(&ast->nodes, i)), depth + 1);
@@ -23,8 +24,9 @@ const Token *advance_token(Parser *parser) {
     return (Token *) get_ptr(access_list(parser->tokens, parser->current++));
 }
 
-const Token *peek_token(const Parser *parser) {
-    return (Token *) get_ptr(access_list(parser->tokens, parser->current));
+const Token *peek_token(const Parser *parser, int peek) {
+    return (Token *) get_ptr(
+        access_list(parser->tokens, parser->current + --peek));
 }
 
 const Token *previous_token(const Parser *parser) {
@@ -32,7 +34,7 @@ const Token *previous_token(const Parser *parser) {
 }
 
 int check(const Parser *parser, Token_Type type) {
-    return peek_token(parser)->type == type;
+    return peek_token(parser, 1)->type == type;
 }
 
 int match_token(Parser *parser, Token_Type type) {
@@ -47,7 +49,7 @@ const Token *consume_token(Parser *parser, Token_Type type, const char *err) {
     if (check(parser, type)) {
         return advance_token(parser);
     }
-    error(peek_token(parser)->line, UNEXPECTED_TOKEN, err);
+    error(peek_token(parser, 1)->line, UNEXPECTED_TOKEN, err);
     parser->enc_err = 1;
     return 0;
 }
@@ -59,9 +61,10 @@ int at_end(const Parser *parser) {
 void synchronize(Parser *parser) {
     advance_token(parser);
     while (!at_end(parser)) {
-        switch(peek_token(parser)->type) {
+        switch(peek_token(parser, 1)->type) {
         case VAR:
         case FUNC:
+        case RBRACE:
             return;
         default:
             break;
@@ -81,7 +84,8 @@ void destroy_ast(Ast *ast) {
 }
 
 Ast *parse_expression(Parser *parser) {
-    return parse_equality(parser);
+    Ast *expr = parse_equality(parser);
+    return expr;
 }
 
 Ast *parse_equality(Parser *parser) {
@@ -162,39 +166,103 @@ Ast *parse_unary(Parser *parser) {
 
 Ast *parse_decl(Parser *parser) {
     if (match_token(parser, VAR)) {
-        if (match_token(parser, IDENT)) {
-            Ast *expr = calloc(1, sizeof(Ast));
+        Ast *expr = calloc(1, sizeof(Ast));
+        ctor_list(&expr->nodes);
+        if (peek_token(parser, 1)->type == LPAREN) {
+            expr->type = DESTR_DECL;
+            expr->assoc_token = previous_token(parser);
+            append_list(&expr->nodes, from_ptr(parse_destr_decl(parser)));
+        } else if (match_token(parser, IDENT)) {
             expr->type = VAR_DECL;
             expr->assoc_token = previous_token(parser);
-            ctor_list(&expr->nodes);
-
-            if (match_token(parser, EQ)) {
-                append_list(&expr->nodes, from_ptr(parse_expression(parser)));
-            }
-            if (match_token(parser, COLON)) {
-                append_list(&expr->nodes, from_ptr(parse_type(parser)));
-            }
-            return expr;
         } else {
-            int lineno = peek_token(parser)->line;
-            error(lineno, UNEXPECTED_TOKEN, "Expected identifier.");
-            printf("\n");
+            int lineno = peek_token(parser, 1)->line;
+            error(lineno, UNEXPECTED_TOKEN, "Expected identifier.\n");
+            parser->enc_err = 1;
+            synchronize(parser);
+            dtor_list(&expr->nodes);
+            free(expr);
+            return 0;
+        }
+        if (match_token(parser, EQ)) {
+            append_list(&expr->nodes, from_ptr(parse_expression(parser)));
+        }
+        if (match_token(parser, COLON)) {
+            append_list(&expr->nodes, from_ptr(parse_type(parser)));
+        }
+        return expr;
+    }
+    return parse_block(parser);
+}
+
+Ast *parse_destr_decl(Parser *parser) {
+    Ast *literal_node = calloc(1, sizeof(Ast));
+    literal_node->type = LITERAL;
+    ctor_list(&literal_node->nodes);
+    consume_token(parser, LPAREN, "Expected to initial \"(\".\n");
+    while (peek_token(parser, 1)->type != RPAREN) {
+        if (match_token(parser, IDENT)) {
+            Ast *ident = calloc(1, sizeof(Ast));
+            ident->type = VARIABLE;
+            ident->assoc_token = previous_token(parser);
+            append_list(&literal_node->nodes, from_ptr(ident));
+        } else if (match_token(parser, UNDERSCORE)) {
+            Ast *ident = calloc(1, sizeof(Ast));
+            ident->type = WILDCARD;
+            ident->assoc_token = previous_token(parser);
+            append_list(&literal_node->nodes, from_ptr(ident));
+        } else if (peek_token(parser, 1)->type == LPAREN) {
+            append_list(&literal_node->nodes, from_ptr(parse_destr_decl(parser)));
+        } else {
+            int lineno = peek_token(parser, 1)->line;
+            error(lineno, UNEXPECTED_TOKEN, "Encountered unexpected token.\n");
             parser->enc_err = 1;
             synchronize(parser);
         }
+
+        if (!match_token(parser, COMMA)) {
+            break;
+        }
     }
-    return parse_block(parser);
+    consume_token(parser, RPAREN, "Expected \")\" after expression.\n");
+    return literal_node;
 }
 
 Ast *parse_type(Parser *parser) {
     if (match_token(parser, IDENT)) {
         Ast *expr = calloc(1, sizeof(Ast));
+        expr->assoc_token = previous_token(parser);
+        if (match_token(parser, COLON)) {
+            expr->type = KEYVAL;
+            append_list(&expr->nodes, from_ptr(parse_type(parser)));
+            return expr;
+        }
+        expr->type = TYPE_DECL;
+        ctor_list(&expr->nodes);
+        return expr;
+    } else if (match_token(parser, LPAREN)) {
+        Ast *expr = calloc(1, sizeof(Ast));
         expr->type = TYPE_DECL;
         expr->assoc_token = previous_token(parser);
         ctor_list(&expr->nodes);
+        while (peek_token(parser, 1)->type != RPAREN) {
+            append_list(&expr->nodes, from_ptr(parse_type(parser)));
+            if (peek_token(parser, 1)->type == COMMA)
+                consume_token(parser,
+                    COMMA,
+                    "Expected ',' in between tuple elements.\n");
+            else if (peek_token(parser, 1)->type == TEOF) {
+                error(peek_token(parser, 1)->line,
+                    UNCLOSED_TUPLE,
+                    "Tuple type missing closing ')'\n");
+                parser->enc_err = 1;
+                return expr;
+            }
+        }
+        consume_token(parser, RPAREN, "Panic...");
         return expr;
     } else {
-        int lineno = peek_token(parser)->line;
+        int lineno = peek_token(parser, 1)->line;
         error(lineno, UNEXPECTED_TOKEN, "Expected type identifier.\n");
         parser->enc_err = 1;
         synchronize(parser);
@@ -208,9 +276,9 @@ Ast *parse_block(Parser *parser) {
         expr->type = BLOCK;
         expr->assoc_token = previous_token(parser);
         ctor_list(&expr->nodes);
-        while (peek_token(parser)->type != RBRACE) {
-            if (peek_token(parser)->type == TEOF) {
-                error(peek_token(parser)->line,
+        while (peek_token(parser, 1)->type != RBRACE) {
+            if (peek_token(parser, 1)->type == TEOF) {
+                error(peek_token(parser, 1)->line,
                     UNCLOSED_BLOCK,
                     "Block missing closing '}'\n");
                 parser->enc_err = 1;
@@ -220,6 +288,7 @@ Ast *parse_block(Parser *parser) {
             }
         }
         consume_token(parser, RBRACE, "Panic...");
+        expr = parse_accessor(parser, expr);
         return expr;
     }
     return parse_primary(parser);
@@ -227,8 +296,24 @@ Ast *parse_block(Parser *parser) {
 
 Ast *parse_primary(Parser *parser) {
     if (match_token(parser, LPAREN)) {
+        const Token *paren_token = previous_token(parser);
         Ast *expr = parse_expression(parser);
+        if (peek_token(parser, 1)->type == COMMA) {
+            Ast *literal_node = calloc(1, sizeof(Ast));
+            literal_node->assoc_token = paren_token;
+            literal_node->type = LITERAL;
+            ctor_list(&literal_node->nodes);
+            append_list(&literal_node->nodes, from_ptr(expr));
+            do {
+                consume_token(parser,
+                    COMMA,
+                    "Expected ',' in between tuple elements.\n");
+                append_list(&literal_node->nodes, from_ptr(parse_expression(parser)));
+            } while (peek_token(parser, 1)->type == COMMA);
+            expr = literal_node;
+        }
         consume_token(parser, RPAREN, "Expected \")\" after expression.");
+        expr = parse_accessor(parser, expr);
         return expr;
     }
 
@@ -242,19 +327,54 @@ Ast *parse_primary(Parser *parser) {
     }
 
     if (match_token(parser, IDENT)) {
-        Ast *var_node = calloc(1, sizeof(Ast));
-        var_node->type = VARIABLE;
-        var_node->assoc_token = previous_token(parser);
-        ctor_list(&var_node->nodes);
-        return var_node;
+        Ast *expr = calloc(1, sizeof(Ast));
+        expr->assoc_token = previous_token(parser);
+        ctor_list(&expr->nodes);
+        if (match_token(parser, COLON)) {
+            expr->type = KEYVAL;
+            append_list(&expr->nodes, from_ptr(parse_expression(parser)));
+            return expr;
+        }
+        expr->type = VARIABLE;
+        expr->assoc_token = previous_token(parser);
+        ctor_list(&expr->nodes);
+        expr = parse_accessor(parser, expr);
+        return expr;
     }
 
-    int lineno = peek_token(parser)->line;
+    int lineno = peek_token(parser, 1)->line;
     error(lineno, UNEXPECTED_TOKEN, "Encountered unknown token.\n");
     parser->enc_err = 1;
     synchronize(parser);
     return 0;
 }
+
+Ast *parse_accessor(Parser *parser, Ast *prev) {
+    while (match_token(parser, DOT)) {
+        Ast *acc_node = calloc(1, sizeof(Ast));
+        acc_node->type = ACCESSOR;
+        acc_node->assoc_token = previous_token(parser);
+        ctor_list(&acc_node->nodes);
+        Ast *slot = calloc(1, sizeof(Ast));
+        if (match_token(parser, NUM)) slot->type = LITERAL;
+        else if (match_token(parser, IDENT)) slot->type = VARIABLE;
+        else {
+            int lineno = peek_token(parser, 1)->line;
+            error(lineno,
+                UNEXPECTED_TOKEN,
+                "Expected a number or identifier for accessor.\n");
+            parser->enc_err = 1;
+        }
+        slot->assoc_token = previous_token(parser);
+        print_token(slot->assoc_token);
+        ctor_list(&slot->nodes);
+        append_list(&acc_node->nodes, from_ptr(prev));
+        append_list(&acc_node->nodes, from_ptr(slot));
+        prev = acc_node;
+    }
+    return prev;
+}
+
 
 Ast *parse(const List *tokens) {
     Parser parser = (Parser) { 0, tokens, 0};

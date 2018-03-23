@@ -2,6 +2,7 @@
 
 #include "error.h"
 #include "ang_primitives.h"
+#include <stdio.h>
 
 void ctor_memory(Memory *mem, size_t gmem_size) {
     mem->gmem = calloc(sizeof(Value*), gmem_size);
@@ -51,6 +52,12 @@ void mark_all_objects(Memory *mem) {
 void sweep_mem(Memory *mem) {
     Ang_Obj **obj = &mem->mem_head;
     while (*obj) {
+        if ((*obj)->type->name[0] == '(') { // Is a tuple
+            List *tuple_val = get_ptr((*obj)->v);
+            dtor_list(tuple_val);
+            free(tuple_val);
+            tuple_val = 0;
+        }
         if (!(*obj)->marked) {
             Ang_Obj *unreachable = *obj;
             *obj = unreachable->next;

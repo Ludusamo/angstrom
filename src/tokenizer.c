@@ -89,7 +89,8 @@ void populate_keywords(Hashtable *keywords) {
     ctor_hashtable(keywords);
     set_hashtable(keywords, "var", from_double(VAR));
     set_hashtable(keywords, "func", from_double(FUNC));
-    set_hashtable(keywords, "return", from_double(RET));
+    set_hashtable(keywords, "_", from_double(UNDERSCORE));
+    set_hashtable(keywords, "return", from_double(RETURN));
 }
 
 List *tokenize(const char *src) {
@@ -151,8 +152,9 @@ List *tokenize(const char *src) {
             if (isdigit(c)) {
                 Value val = number(&scan);
                 append_list(tokens, val);
-            } else if (isalpha(c)) {
-                while (isalnum(peek(&scan))) scan.current++;
+            } else if (c == '_' || isalpha(c)) {
+                while (peek(&scan) == '_' || isalnum(peek(&scan))) 
+                    scan.current++;
                 const char *lexeme = copy_cur_lexeme(&scan);
                 Value keyword = access_hashtable(&keywords, lexeme);
                 Token_Type type = keyword.bits == nil_val.bits
