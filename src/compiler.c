@@ -153,6 +153,9 @@ void compile_literal(Compiler *c, Ast *code) {
         }
         code->eval_type = get_tuple_type(c, &slots, &types);
         dtor_list(&types);
+        for (size_t i = 0; i < code->nodes.length; i++) {
+            free(get_ptr(access_list(&slots, i)));
+        }
         dtor_list(&slots);
         append_list(&c->instr, from_double(CONS_TUPLE));
         append_list(&c->instr, from_ptr((void *) code->eval_type));
