@@ -27,8 +27,10 @@
     code(SET_FP, 0) \
     code(RESET_FP, 0) \
     code(DUP, 0) \
-    code(MOV_REG, 1) \
-    code(PUSH_REG, 1) \
+    code(STO_REG, 1) \
+    code(LOAD_REG, 1) \
+    code(SWAP_REG, 2) \
+    code(MOV_REG, 2) \
     code(CALL, 2) \
     code(RET, 0)
 

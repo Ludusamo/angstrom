@@ -29,7 +29,7 @@ void compile_accessor(Compiler *c, Ast *code);
 void compile_decl(Compiler *c, Ast *code);
 void compile_var_decl(Compiler *c, Ast *code);
 void compile_destr_decl(Compiler *c, Ast *code);
-void compile_destr_decl_helper(Compiler *c, Ast *lhs, Ast *rhs);
+void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const Ang_Type *ttype);
 
 Ang_Type *compile_type(Compiler *c, Ast *code);
 char *construct_tuple_name(const List *slots, const List *types);

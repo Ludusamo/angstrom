@@ -188,9 +188,8 @@ void compile_accessor(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
     const Ang_Type *type = get_child(code, 0)->eval_type;
     const char *slot_name = get_child(code, 1)->assoc_token->lexeme;
-    Ang_Slot *slot = get_ptr(access_hashtable(&type->slots, slot_name));
-    int slot_num = slot->index;
-    code->eval_type = slot->type;
+    int slot_num = access_hashtable(&type->slots, slot_name).as_int32;
+    code->eval_type = get_ptr(access_list(&type->slot_types, slot_num));
 
     append_list(&c->instr, from_double(PUSH));
     append_list(&c->instr, from_double(slot_num));
@@ -257,49 +256,15 @@ void compile_destr_decl(Compiler *c, Ast *code) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
             c->enc_err = 1;
         }
-        append_list(&c->instr, from_double(MOV_REG));
+        append_list(&c->instr, from_double(STO_REG));
         append_list(&c->instr, from_double(A));
     }
     code->eval_type = tuple_type;
 
-    int local = c->parent != 0; // If the variables are global or local
-    Ast *syms = get_child(code, 0);
-    if (syms->nodes.length > tuple_type->slot_types.length) {
-        error(code->assoc_token->line,
-            INSUFFICIENT_TUPLE,
-            "Trying to destructure more slots than the tuple holds.");
-        c->enc_err = 1;
-        return;
-    }
-    for (size_t i = 0; i < syms->nodes.length; i++) {
-        if (get_child(syms, i)->type == WILDCARD) continue;
-        const char *sym = get_child(syms, i)->assoc_token->lexeme;
-        const Ang_Type *slot_type =
-            get_ptr(access_list(&tuple_type->slot_types, i));
-        if (!has_assignment) push_default_value(c, slot_type);
-        else {
-            append_list(&c->instr, from_double(PUSH_REG));
-            append_list(&c->instr, from_double(A));
-            append_list(&c->instr, from_double(PUSH));
-            append_list(&c->instr, from_double(i));
-            append_list(&c->instr, from_double(LOAD_TUPLE));
-        }
-        int loc = local ? num_local(c) : c->env.symbols.size;
+    compile_destr_decl_helper(c, has_assignment, get_child(code, 0), tuple_type);
 
-        if (symbol_exists(&c->env, sym)) {
-            error(code->assoc_token->line, NAME_COLLISION, sym);
-            c->enc_err = 1;
-            return;
-        }
-        create_symbol(&c->env, sym, slot_type, loc, !local);
-
-        if (!local) {
-            append_list(&c->instr, from_double(GSTORE));
-            append_list(&c->instr, from_double(loc));
-        }
-    }
     if (has_assignment) {
-        append_list(&c->instr, from_double(PUSH_REG));
+        append_list(&c->instr, from_double(LOAD_REG));
         append_list(&c->instr, from_double(A));
     } else {
         append_list(&c->instr, from_double(PUSOBJ));
@@ -310,6 +275,72 @@ void compile_destr_decl(Compiler *c, Ast *code) {
         ctor_list(cpy);
         copy_list(obj, cpy);
         append_list(&c->instr, from_ptr(cpy));
+    }
+}
+
+void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const Ang_Type *ttype) {
+    if (lhs->nodes.length > ttype->slot_types.length) {
+        error(lhs->assoc_token->line,
+            INSUFFICIENT_TUPLE,
+            "Trying to destructure more slots than the tuple holds.");
+        c->enc_err = 1;
+        return;
+    }
+    int local = c->parent != 0; // If the variables are global or local
+    for (size_t i = 0; i < lhs->nodes.length; i++) {
+        if (get_child(lhs, i)->type == WILDCARD) continue;
+
+        // If trying to destructure inner tuple, recurse
+        if (get_child(lhs, i)->type == LITERAL) {
+            // Move register A to B and pull out inner tuple
+            if (has_assignment) {
+                append_list(&c->instr, from_double(MOV_REG));
+                append_list(&c->instr, from_double(A));
+                append_list(&c->instr, from_double(B));
+                append_list(&c->instr, from_double(LOAD_REG));
+                append_list(&c->instr, from_double(B));
+                append_list(&c->instr, from_double(PUSH));
+                append_list(&c->instr, from_double(i));
+                append_list(&c->instr, from_double(LOAD_TUPLE));
+                append_list(&c->instr, from_double(STO_REG));
+                append_list(&c->instr, from_double(A));
+            }
+            const Ang_Type *inner_ttype = get_ptr(access_list(&ttype->slot_types, i));
+            compile_destr_decl_helper(c, has_assignment, get_child(lhs, i), inner_ttype);
+
+            // Restore outer tuple
+            if(has_assignment) {
+                append_list(&c->instr, from_double(MOV_REG));
+                append_list(&c->instr, from_double(B));
+                append_list(&c->instr, from_double(A));
+            }
+            continue;
+        }
+
+        const char *sym = get_child(lhs, i)->assoc_token->lexeme;
+        const Ang_Type *slot_type =
+            get_ptr(access_list(&ttype->slot_types, i));
+        if (!has_assignment) push_default_value(c, slot_type);
+        else {
+            append_list(&c->instr, from_double(LOAD_REG));
+            append_list(&c->instr, from_double(A));
+            append_list(&c->instr, from_double(PUSH));
+            append_list(&c->instr, from_double(i));
+            append_list(&c->instr, from_double(LOAD_TUPLE));
+        }
+        int loc = local ? num_local(c) : c->env.symbols.size;
+
+        if (symbol_exists(&c->env, sym)) {
+            error(lhs->assoc_token->line, NAME_COLLISION, sym);
+            c->enc_err = 1;
+            return;
+        }
+        create_symbol(&c->env, sym, slot_type, loc, !local);
+
+        if (!local) {
+            append_list(&c->instr, from_double(GSTORE));
+            append_list(&c->instr, from_double(loc));
+        }
     }
 }
 
