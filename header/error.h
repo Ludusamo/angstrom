@@ -11,6 +11,7 @@
     code(NAME_COLLISION) \
     code(UNKNOWN_TYPE) \
     code(TYPE_ERROR) \
+    code(INSUFFICIENT_TUPLE) \
     code(UNCLOSED_BLOCK) \
     code(UNCLOSED_TUPLE) \
     code(INCOMPLETE_RECORD)

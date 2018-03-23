@@ -259,40 +259,42 @@ void compile_destr_decl(Compiler *c, Ast *code) {
     }
     code->eval_type = tuple_type;
 
+    int local = c->parent != 0; // If the variables are global or local
     Ast *syms = get_child(code, 0);
-    Iter ih;
-    iter_hashtable(&ih, &tuple_type->slots);
-    foreach (ih) {
-        Keyval *kv = get_ptr(val_iter_hashtable(&ih));
-        Ang_Slot *slot = get_ptr(kv->val);
-        int slot_num = slot->index;
-
-        if (!has_assignment) {
-            push_default_value(c, slot->type);
-        } else {
+    if (syms->nodes.length > tuple_type->slot_types.length) {
+        error(code->assoc_token->line,
+            INSUFFICIENT_TUPLE,
+            "Trying to destructure more slots than the tuple holds.");
+        c->enc_err = 1;
+        return;
+    }
+    for (size_t i = 0; i < syms->nodes.length; i++) {
+        if (get_child(syms, i)->type == WILDCARD) continue;
+        const char *sym = get_child(syms, i)->assoc_token->lexeme;
+        const Ang_Type *slot_type =
+            get_ptr(access_list(&tuple_type->slot_types, i));
+        if (!has_assignment) push_default_value(c, slot_type);
+        else {
             append_list(&c->instr, from_double(PUSH_REG));
             append_list(&c->instr, from_double(A));
             append_list(&c->instr, from_double(PUSH));
-            append_list(&c->instr, from_double(slot_num));
+            append_list(&c->instr, from_double(i));
             append_list(&c->instr, from_double(LOAD_TUPLE));
         }
-        int local = c->parent != 0; // If the variable is global or local
         int loc = local ? num_local(c) : c->env.symbols.size;
 
-        const char *sym = get_child(syms, slot_num)->assoc_token->lexeme;
         if (symbol_exists(&c->env, sym)) {
             error(code->assoc_token->line, NAME_COLLISION, sym);
             c->enc_err = 1;
             return;
         }
-        create_symbol(&c->env, sym, slot->type, loc, !local);
+        create_symbol(&c->env, sym, slot_type, loc, !local);
 
         if (!local) {
             append_list(&c->instr, from_double(GSTORE));
             append_list(&c->instr, from_double(loc));
         }
     }
-    destroy_iter_hashtable(&ih);
     if (has_assignment) {
         append_list(&c->instr, from_double(PUSH_REG));
         append_list(&c->instr, from_double(A));
@@ -383,10 +385,9 @@ Ang_Type *construct_tuple(const List *slots, const List *types, int id, char *tu
     Ang_Type *t = calloc(1, sizeof(Ang_Type));
     ctor_ang_type(t, id, tuple_name, from_ptr(default_tuple));
     for (size_t i = 0; i < slots->length; i++) {
-        Ang_Slot *slot = calloc(1, sizeof(Ang_Slot));
-        slot->index = i;
-        slot->type = get_ptr(access_list(types, i));
-        set_hashtable(&t->slots, get_ptr(access_list(slots, i)), from_ptr(slot));
+        const char *sym = get_ptr(access_list(slots, i));
+        const Ang_Type *slot_type = get_ptr(access_list(types, i));
+        add_slot(t, sym, slot_type);
     }
     return t;
 }
