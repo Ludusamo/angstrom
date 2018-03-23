@@ -134,12 +134,26 @@ void eval(Ang_VM *vm) {
     case DUP:
         push_stack(&vm->mem, vm->mem.stack[vm->mem.sp - 1]);
         break;
-    case MOV_REG:
+    case STO_REG:
         vm->mem.registers[get_next_op(vm).as_int32] = pop_stack(&vm->mem);
         break;
-    case PUSH_REG:
+    case LOAD_REG:
         push_stack(&vm->mem, vm->mem.registers[get_next_op(vm).as_int32]);
         break;
+    case SWAP_REG: {
+        int reg1 = get_next_op(vm).as_int32;
+        int reg2 = get_next_op(vm).as_int32;
+        Ang_Obj *temp = vm->mem.registers[reg1];
+        vm->mem.registers[reg1] = vm->mem.registers[reg2];
+        vm->mem.registers[reg2] = temp;
+        break;
+    }
+    case MOV_REG: {
+        int reg1 = get_next_op(vm).as_int32;
+        int reg2 = get_next_op(vm).as_int32;
+        vm->mem.registers[reg2] = vm->mem.registers[reg1];
+        break;
+    }
     case CALL: {
         int ip = get_next_op(vm).as_int32;
         int num_args = get_next_op(vm).as_int32;
