@@ -14,6 +14,7 @@
     code(RBRACK) \
     code(COMMA) \
     code(COLON) \
+    code(COLON_COLON) \
     code(UNDERSCORE) \
     code(DOT) \
     code(MINUS) \

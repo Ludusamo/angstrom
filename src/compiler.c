@@ -282,7 +282,7 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
     if (lhs->nodes.length > ttype->slot_types.length) {
         error(lhs->assoc_token->line,
             INSUFFICIENT_TUPLE,
-            "Trying to destructure more slots than the tuple holds.");
+            "Trying to destructure more slots than the tuple holds.\n");
         c->enc_err = 1;
         return;
     }
