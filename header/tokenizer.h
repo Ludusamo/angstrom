@@ -34,6 +34,7 @@
     code(NUM) \
     code(VAR) \
     code(FUNC) \
+    code(TYPE) \
     code(RETURN) \
     code(TEOF)
 
