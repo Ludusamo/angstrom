@@ -112,7 +112,12 @@ List *tokenize(const char *src) {
         case '[': add_token(tokens, &scan, LBRACK, nil_val); break;
         case ']': add_token(tokens, &scan, RBRACK, nil_val); break;
         case ',': add_token(tokens, &scan, COMMA, nil_val); break;
-        case ':': add_token(tokens, &scan, COLON, nil_val); break;
+        case ':':
+            add_token(tokens,
+                &scan,
+                match(&scan, ':') ? COLON_COLON : COLON,
+                nil_val);
+            break;
         case '.': add_token(tokens, &scan, DOT, nil_val); break;
         case '-': add_token(tokens, &scan, MINUS, nil_val); break;
         case '+': add_token(tokens, &scan, PLUS, nil_val); break;
