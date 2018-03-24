@@ -201,7 +201,7 @@ void compile_decl(Compiler *c, Ast *code) {
     int has_assignment = 0;
     for (size_t i = 0; i < code->nodes.length; i++) {
         Ast *child = get_child(code, i);
-        if (child->type == TYPE_DECL) {
+        if (child->type == TYPE) {
             type = compile_type(c, child);
         } else {
             has_assignment = 1;
@@ -242,7 +242,7 @@ void compile_destr_decl(Compiler *c, Ast *code) {
     int has_assignment = 0;
     for (size_t i = 1; i < code->nodes.length; i++) {
         Ast *child = get_child(code, i);
-        if (child->type == TYPE_DECL) {
+        if (child->type == TYPE) {
             tuple_type = compile_type(c, child);
         } else {
             has_assignment = 1;

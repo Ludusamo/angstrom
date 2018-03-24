@@ -59,6 +59,7 @@ const Token *consume_token(Parser *parser, Token_Type type, const char *err) {
     }
     error(peek_token(parser, 1)->line, UNEXPECTED_TOKEN, err);
     parser->enc_err = 1;
+    synchronize(parser);
     return 0;
 }
 
@@ -154,6 +155,20 @@ Ast *parse_unary(Parser *parser) {
         append_list(&expr->nodes, from_ptr(parse_decl(parser)));
         return expr;
     }
+    return parse_type_decl(parser);
+}
+
+Ast *parse_type_decl(Parser *parser) {
+    if (match_token(parser, TYPE_KEYWORD)) {
+        if (consume_token(parser, IDENT, "Expected identifier.\n")) {
+            Ast *expr = create_ast(TYPE_DECL, previous_token(parser));
+            if (consume_token(parser, EQ, "Expected assignment.\n")) {
+                append_list(&expr->nodes, from_ptr(parse_type(parser)));
+                return expr;
+            } else free(expr);
+        }
+        return 0;
+    }
     return parse_decl(parser);
 }
 
@@ -217,7 +232,7 @@ Ast *parse_destr_decl(Parser *parser) {
 
 Ast *parse_type(Parser *parser) {
     if (match_token(parser, IDENT)) {
-        Ast *expr = create_ast(TYPE_DECL, previous_token(parser));
+        Ast *expr = create_ast(TYPE, previous_token(parser));
         if (match_token(parser, COLON)) {
             expr->type = KEYVAL;
             append_list(&expr->nodes, from_ptr(parse_type(parser)));
@@ -225,7 +240,7 @@ Ast *parse_type(Parser *parser) {
         }
         return expr;
     } else if (match_token(parser, LPAREN)) {
-        Ast *expr = create_ast(TYPE_DECL, previous_token(parser));
+        Ast *expr = create_ast(TYPE, previous_token(parser));
         while (peek_token(parser, 1)->type != RPAREN) {
             append_list(&expr->nodes, from_ptr(parse_type(parser)));
             if (peek_token(parser, 1)->type == COMMA)

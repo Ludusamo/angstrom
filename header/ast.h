@@ -15,8 +15,9 @@
     code(MUL_OP) \
     code(UNARY_OP) \
     code(VAR_DECL) \
-    code(DESTR_DECL) \
     code(TYPE_DECL) \
+    code(DESTR_DECL) \
+    code(TYPE) \
     code(ACCESSOR) \
     code(VARIABLE) \
     code(WILDCARD) \
@@ -62,6 +63,7 @@ Ast *parse_comparison(Parser *parser);
 Ast *parse_addition(Parser *parser);
 Ast *parse_multiplication(Parser *parser);
 Ast *parse_unary(Parser *parser);
+Ast *parse_type_decl(Parser *parser);
 Ast *parse_decl(Parser *parser);
 Ast *parse_destr_decl(Parser *parser);
 Ast *parse_type(Parser *parser);
