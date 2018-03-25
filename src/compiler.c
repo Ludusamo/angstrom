@@ -44,6 +44,9 @@ void compile(Compiler *c, Ast *code) {
     case ACCESSOR:
         compile_accessor(c, code);
         break;
+    case TYPE_DECL:
+        compile_type_decl(c, code);
+        break;
     case VAR_DECL:
         compile_decl(c, code);
         break;
@@ -194,6 +197,30 @@ void compile_accessor(Compiler *c, Ast *code) {
     append_list(&c->instr, from_double(PUSH));
     append_list(&c->instr, from_double(slot_num));
     append_list(&c->instr, from_double(LOAD_TUPLE));
+}
+
+void compile_type_decl(Compiler *c, Ast *code) {
+    int has_default = code->nodes.length == 2;
+    const Ang_Type *type = compile_type(c, get_child(code, has_default ? 1 : 0));
+    const char *type_name = code->assoc_token->lexeme;
+
+    // Set default value
+    if (has_default) {
+        compile(c, get_child(code, 0));
+        append_list(&c->instr, from_double(DUP));
+        append_list(&c->instr, from_double(SET_DEFAULT_VAL));
+        append_list(&c->instr, from_ptr((void *) type_name));
+    } else {
+        append_list(&c->instr, from_double(PUSOBJ));
+        append_list(&c->instr, type->default_value);
+    }
+
+    code->eval_type = type;
+
+    // Register the new type
+    Ang_Type *new_type = calloc(1, sizeof(Ang_Type));
+    ctor_ang_type(new_type, type->id, type_name, type->default_value);
+    set_hashtable(&c->env.types, type_name, from_ptr(new_type));
 }
 
 void compile_decl(Compiler *c, Ast *code) {

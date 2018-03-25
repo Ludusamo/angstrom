@@ -134,6 +134,11 @@ void eval(Ang_VM *vm) {
     case DUP:
         push_stack(&vm->mem, vm->mem.stack[vm->mem.sp - 1]);
         break;
+    case SET_DEFAULT_VAL: {
+        const char *type_name = get_ptr(get_next_op(vm));
+        find_type(vm->compiler, type_name)->default_value = pop_stack(&vm->mem)->v;
+        break;
+    }
     case STO_REG:
         vm->mem.registers[get_next_op(vm).as_int32] = pop_stack(&vm->mem);
         break;

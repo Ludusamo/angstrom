@@ -26,6 +26,7 @@ void compile_literal(Compiler *c, Ast *code);
 void compile_variable(Compiler *c, Ast *code);
 void compile_keyval(Compiler *c, Ast *code);
 void compile_accessor(Compiler *c, Ast *code);
+void compile_type_decl(Compiler *c, Ast *code);
 void compile_decl(Compiler *c, Ast *code);
 void compile_var_decl(Compiler *c, Ast *code);
 void compile_destr_decl(Compiler *c, Ast *code);
