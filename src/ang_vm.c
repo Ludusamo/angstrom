@@ -10,16 +10,16 @@ void ctor_ang_vm(Ang_VM *vm, size_t gmem_size) {
     ctor_memory(&vm->mem, gmem_size);
     vm->running = 0;
     vm->trace = 0;
-    ctor_list(&vm->prog);
+    ctor_compiler(&vm->compiler);
 }
 
 void dtor_ang_vm(Ang_VM *vm) {
     dtor_memory(&vm->mem);
-    dtor_list(&vm->prog);
+    dtor_compiler(&vm->compiler);
 }
 
 Value get_next_op(Ang_VM *vm) {
-    return access_list(&vm->prog, vm->mem.ip++);
+    return access_list(&INSTR(vm), vm->mem.ip++);
 }
 
 void eval(Ang_VM *vm) {
@@ -31,7 +31,7 @@ void eval(Ang_VM *vm) {
         vm->running = 0;
         break;
     case PUSH:
-        push_num_stack(vm, get_next_op(vm).as_int32);
+        push_num_stack(vm, get_next_op(vm).as_double);
         break;
     case PUSOBJ: {
         Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
@@ -175,25 +175,29 @@ void eval(Ang_VM *vm) {
 }
 
 int fetch(const Ang_VM *vm) {
-    return access_list(&vm->prog, vm->mem.ip).as_int32;
+    return access_list(&INSTR(vm), vm->mem.ip).as_int32;
 }
 
 int emit_op(Ang_VM *vm, Value op) {
-    append_list(&vm->prog, op);
-    return vm->prog.length;
+    append_list(&INSTR(vm), op);
+    return INSTR(vm).length;
 }
 
 void push_num_stack(Ang_VM *vm, double num) {
-    Ang_Obj *obj = new_object(&vm->mem, find_type(vm->compiler, "Num"));
+    Ang_Obj *obj = new_object(&vm->mem, find_type(&vm->compiler, "Num"));
     obj->v = from_double(num);
     push_stack(&vm->mem, obj);
 }
 
 void run_compiled_instructions(Ang_VM *vm, Compiler *c) {
-    vm->compiler = c;
     int last_op = 0;
     for (size_t i = 0; i < c->instr.length; i++) {
         last_op = emit_op(vm, access_list(&c->instr, i));
     }
     while (vm->mem.ip < last_op) eval(vm);
+}
+
+void run_code(Ang_VM *vm, const char *code, const char *src_name) {
+    compile_code(&vm->compiler, code, src_name);
+    while (vm->mem.ip < INSTR(vm).length) eval(vm);
 }

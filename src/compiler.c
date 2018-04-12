@@ -12,11 +12,33 @@ void ctor_compiler(Compiler *compiler) {
     ctor_ang_env(&compiler->env);
     compiler->enc_err = 0;
     compiler->parent = 0;
+    ctor_list(&compiler->compiled_ast);
+    ctor_parser(&compiler->parser);
 }
 
 void dtor_compiler(Compiler *compiler) {
-    dtor_ang_env(&compiler->env);
     dtor_list(&compiler->instr);
+    dtor_ang_env(&compiler->env);
+    for (size_t i = 0; i < compiler->compiled_ast.length; i++) {
+        Ast *ast = get_ptr(access_list(&compiler->compiled_ast, i));
+        destroy_ast(ast);
+        free(ast);
+    }
+    dtor_list(&compiler->compiled_ast);
+    dtor_parser(&compiler->parser);
+}
+
+void compile_code(Compiler *c, const char *code, const char *src_name) {
+    Ast *ast = parse(&c->parser, code, src_name);
+    if (c->parser.enc_err) {
+        printf("Failed to parse source\n");
+        return;
+    }
+    append_list(&c->compiled_ast, from_ptr(ast));
+    #ifdef DEBUG
+    print_ast(ast, 0);
+    #endif
+    compile(c, ast);
 }
 
 void compile(Compiler *c, Ast *code) {
@@ -136,7 +158,7 @@ void compile_literal(Compiler *c, Ast *code) {
         ctor_list(&types);
         List slots;
         ctor_list(&slots);
-        for (int i = 0; i < code->nodes.length; i++) {
+        for (size_t i = 0; i < code->nodes.length; i++) {
             const Ang_Type *child_type = get_child(code, i)->eval_type;
             append_list(&types, from_ptr((void *) child_type));
             if (is_record) {
@@ -147,14 +169,14 @@ void compile_literal(Compiler *c, Ast *code) {
             } else {
                 // Populating slots with slot number
                 char *slot_num = calloc(num_digits(i) + 1, sizeof(char));
-                sprintf(slot_num, "%d", i);
+                sprintf(slot_num, "%lx", i);
                 append_list(&slots, from_ptr(slot_num));
             }
         }
         code->eval_type = get_tuple_type(c, &slots, &types);
         dtor_list(&types);
         for (size_t i = 0; i < code->nodes.length; i++) {
-            free(get_ptr(access_list(&slots, i)));
+            //free(get_ptr(access_list(&slots, i)));
         }
         dtor_list(&slots);
         append_list(&c->instr, from_double(CONS_TUPLE));
@@ -187,6 +209,8 @@ void compile_keyval(Compiler *c, Ast *code) {
 void compile_accessor(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
     const Ang_Type *type = get_child(code, 0)->eval_type;
+    printf("%s\n", type->name);
+    printf("%lu\n", type->slots.size);
     const char *slot_name = get_child(code, 1)->assoc_token->lexeme;
     int slot_num = access_hashtable(&type->slots, slot_name).as_int32;
     code->eval_type = get_ptr(access_list(&type->slot_types, slot_num));

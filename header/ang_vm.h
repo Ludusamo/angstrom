@@ -7,13 +7,14 @@
 #include "list.h"
 #include "compiler.h"
 
+#define INSTR(vm) vm->compiler.instr
+
 typedef struct {
     Memory mem;
     int running;
     int trace;
-    List prog;
 
-    Compiler *compiler;
+    Compiler compiler;
 } Ang_VM;
 
 void ctor_ang_vm(Ang_VM *vm, size_t gmem_size);
@@ -28,5 +29,7 @@ int emit_op(Ang_VM *vm, Value op);
 void push_num_stack(Ang_VM *vm, double num);
 
 void run_compiled_instructions(Ang_VM *vm, Compiler *c);
+
+void run_code(Ang_VM *vm, const char *code, const char *src_name);
 
 #endif // ANG_VM_H

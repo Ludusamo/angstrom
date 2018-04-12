@@ -48,6 +48,7 @@ typedef struct {
     const char *lexeme;
     const Value literal;
     int line;
+    const char *src_name;
 } Token;
 
 typedef struct {
@@ -56,6 +57,7 @@ typedef struct {
     int line;
     int start;
     int current;
+    const char *src_name;
 } Scanner;
 
 const char *token_type_to_str(Token_Type t);
@@ -72,7 +74,8 @@ char peek_next(const Scanner *scanner);
 Value string(Scanner *scanner);
 Value number(Scanner *scanner);
 void populate_keywords(Hashtable *keywords);
-List *tokenize(const char *src);
+int tokenize(List *tokens, const char *src, const char *src_name);
 
+void destroy_tokens_from_n(List *tokens, size_t n);
 void destroy_tokens(List *tokens);
 #endif // TOKENIZER_H

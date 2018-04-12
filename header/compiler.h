@@ -4,12 +4,15 @@
 #include "ast.h"
 #include "hashtable.h"
 #include "ang_env.h"
+#include "ast.h"
 
 typedef struct Compiler Compiler;
 struct Compiler{
     List instr;
     int enc_err;
 
+    Parser parser;
+    List compiled_ast;
     Ang_Env env;
 
     Compiler *parent;
@@ -17,6 +20,8 @@ struct Compiler{
 
 void ctor_compiler(Compiler *compiler);
 void dtor_compiler(Compiler *compiler);
+
+void compile_code(Compiler *c, const char *code, const char *src_name);
 
 void compile(Compiler *c, Ast *code);
 void compile_unary_op(Compiler *c, Ast *code);

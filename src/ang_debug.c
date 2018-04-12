@@ -8,8 +8,8 @@ void print_stack_trace(const Ang_VM *vm) {
     int lenOffset = 40 - strlen(opcode_to_str(op)) - num_ops(op); // Length necessary to offset stack print.
     fprintf(stderr, "%04d: %s ", ip, opcode_to_str(op));
     for (int i = 0; i < num_ops(op); i++) {
-        fprintf(stderr, "%d ", access_list(&vm->prog, ip + i + 1).as_int32);
-        lenOffset -= num_digits(access_list(&vm->prog, ip + i + 1).as_int32);
+        fprintf(stderr, "%d ", access_list(&INSTR(vm), ip + i + 1).as_int32);
+        lenOffset -= num_digits(access_list(&INSTR(vm), ip + i + 1).as_int32);
     }
     fprintf(stderr, "%*s", lenOffset, "[ ");
     for (int i = 0; i < sp; i++) {
