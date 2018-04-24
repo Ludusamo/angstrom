@@ -10,6 +10,7 @@ void ctor_ang_vm(Ang_VM *vm, size_t gmem_size) {
     ctor_memory(&vm->mem, gmem_size);
     vm->running = 0;
     vm->trace = 0;
+    vm->enc_err = 0;
     vm->compiler.enc_err = &vm->enc_err;
     ctor_compiler(&vm->compiler);
 }

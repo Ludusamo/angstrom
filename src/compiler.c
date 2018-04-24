@@ -30,8 +30,8 @@ void dtor_compiler(Compiler *compiler) {
 
 void compile_code(Compiler *c, const char *code, const char *src_name) {
     Ast *ast = parse(&c->parser, code, src_name);
-    if (*c->enc_err) return;
     append_list(&c->compiled_ast, from_ptr(ast));
+    if (*c->enc_err) return;
     #ifdef DEBUG
     print_ast(ast, 0);
     #endif
