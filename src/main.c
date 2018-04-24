@@ -120,8 +120,12 @@ void run_repl() {
             break;
         }
         run_code(&vm, expr, "");
-        Ang_Obj *result = pop_stack(&vm.mem);
-        print_ang_obj(result);
+        if (!vm.enc_err) {
+            Ang_Obj *result = pop_stack(&vm.mem);
+            print_ang_obj(result);
+        } else {
+            vm.enc_err = 0;
+        }
         free(expr);
     }
     dtor_ang_vm(&vm);

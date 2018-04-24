@@ -6,7 +6,6 @@
 
 void ctor_parser(Parser *p) {
     p->current = 0;
-    p->enc_err = 0;
     ctor_list(&p->tokens);
 }
 
@@ -71,12 +70,12 @@ const Token *consume_token(Parser *parser, Token_Type type, const char *err) {
         return advance_token(parser);
     }
     error(peek_token(parser, 1)->line, UNEXPECTED_TOKEN, err);
-    parser->enc_err = 1;
+    *parser->enc_err = 1;
     return 0;
 }
 
 int at_end(const Parser *parser) {
-    return check(parser, TEOF);
+    return parser->current >= parser->tokens.length;
 }
 
 void synchronize(Parser *parser) {
@@ -185,7 +184,7 @@ Ast *parse_decl(Parser *parser) {
         } else {
             int lineno = peek_token(parser, 1)->line;
             error(lineno, UNEXPECTED_TOKEN, "Expected identifier.\n");
-            parser->enc_err = 1;
+            *parser->enc_err = 1;
             synchronize(parser);
             dtor_list(&expr->nodes);
             free(expr);
@@ -217,7 +216,7 @@ Ast *parse_destr_decl(Parser *parser) {
         } else {
             int lineno = peek_token(parser, 1)->line;
             error(lineno, UNEXPECTED_TOKEN, "Encountered unexpected token.\n");
-            parser->enc_err = 1;
+            *parser->enc_err = 1;
             synchronize(parser);
         }
 
@@ -250,7 +249,7 @@ Ast *parse_type(Parser *parser) {
                 error(peek_token(parser, 1)->line,
                     UNCLOSED_TUPLE,
                     "Tuple type missing closing ')'\n");
-                parser->enc_err = 1;
+                *parser->enc_err = 1;
                 return expr;
             }
         }
@@ -259,7 +258,7 @@ Ast *parse_type(Parser *parser) {
     } else {
         int lineno = peek_token(parser, 1)->line;
         error(lineno, UNEXPECTED_TOKEN, "Expected type identifier.\n");
-        parser->enc_err = 1;
+        *parser->enc_err = 1;
         synchronize(parser);
     }
     return 0;
@@ -273,7 +272,7 @@ Ast *parse_block(Parser *parser) {
                 error(peek_token(parser, 1)->line,
                     UNCLOSED_BLOCK,
                     "Block missing closing '}'\n");
-                parser->enc_err = 1;
+                *parser->enc_err = 1;
                 return expr;
             } else {
                 append_list(&expr->nodes, from_ptr(parse_expression(parser)));
@@ -323,7 +322,7 @@ Ast *parse_primary(Parser *parser) {
 
     int lineno = peek_token(parser, 1)->line;
     error(lineno, UNEXPECTED_TOKEN, "Encountered unknown token.\n");
-    parser->enc_err = 1;
+    *parser->enc_err = 1;
     synchronize(parser);
     return 0;
 }
@@ -338,7 +337,7 @@ Ast *parse_accessor(Parser *parser, Ast *prev) {
             error(lineno,
                 UNEXPECTED_TOKEN,
                 "Expected a number or identifier for accessor.\n");
-            parser->enc_err = 1;
+            *parser->enc_err = 1;
         }
         append_list(&acc_node->nodes, from_ptr(prev));
         append_list(&acc_node->nodes, from_ptr(slot));
@@ -348,11 +347,14 @@ Ast *parse_accessor(Parser *parser, Ast *prev) {
 }
 
 Ast *parse(Parser *p, const char *code, const char *src_name) {
-    if(!tokenize(&p->tokens, code, src_name)) return 0;
+    if(!tokenize(&p->tokens, code, src_name)) {
+        *p->enc_err = 1;
+        return 0;
+    }
     Ast *prog = calloc(1, sizeof(Ast));
     prog->type = PROG;
     ctor_list(&prog->nodes);
-    while (p->current < p->tokens.length) {
+    while (p->current < p->tokens.length && !match_token(p, TEOF)) {
         append_list(&prog->nodes, from_ptr(parse_expression(p)));
     }
     return prog;

@@ -181,6 +181,7 @@ int tokenize(List *tokens, const char *src, const char *src_name) {
     }
 
     scan.start = scan.current++;
+    add_token(tokens, &scan, TEOF, nil_val);
     dtor_hashtable(&keywords);
     return 1;
 }

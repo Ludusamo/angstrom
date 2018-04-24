@@ -13,6 +13,7 @@ typedef struct {
     Memory mem;
     int running;
     int trace;
+    int enc_err;
 
     Compiler compiler;
 } Ang_VM;

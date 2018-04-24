@@ -38,7 +38,7 @@ typedef struct {
 typedef struct {
     int current;
     List tokens;
-    int enc_err;
+    int *enc_err;
 } Parser;
 
 void ctor_parser(Parser *p);

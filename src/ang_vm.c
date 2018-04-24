@@ -10,6 +10,7 @@ void ctor_ang_vm(Ang_VM *vm, size_t gmem_size) {
     ctor_memory(&vm->mem, gmem_size);
     vm->running = 0;
     vm->trace = 0;
+    vm->compiler.enc_err = &vm->enc_err;
     ctor_compiler(&vm->compiler);
 }
 
@@ -199,5 +200,7 @@ void run_compiled_instructions(Ang_VM *vm, Compiler *c) {
 
 void run_code(Ang_VM *vm, const char *code, const char *src_name) {
     compile_code(&vm->compiler, code, src_name);
+    if (INSTR(vm).length == 0) vm->enc_err = 1;
+    if (vm->enc_err) return;
     while (vm->mem.ip < INSTR(vm).length) eval(vm);
 }
