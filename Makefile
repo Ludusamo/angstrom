@@ -17,6 +17,14 @@ TEST_OBJECTS :=  $(TEST_SRC_FILES:$(TESTDIR)/%.c=$(OBJDIR)/%.o)
 CC = clang
 CFLAGS = -std=c99 -Wall -Iheader -IC-Data-Structures/header
 
+ifndef DEBUG
+	DEBUG = 0
+endif
+
+ifeq "$(DEBUG)" "1"
+	CFLAGS += -g -DDEBUG
+endif
+
 TEST_CFLAGS = -std=c99 -Wall -Iheader -Iheader/test
 
 LINKER_FLAGS = -Wall -Iheader -lm

@@ -10,13 +10,34 @@
 void ctor_compiler(Compiler *compiler) {
     ctor_list(&compiler->instr);
     ctor_ang_env(&compiler->env);
-    compiler->enc_err = 0;
     compiler->parent = 0;
+    ctor_list(&compiler->compiled_ast);
+    ctor_parser(&compiler->parser);
+    compiler->parser.enc_err = compiler->enc_err;
 }
 
 void dtor_compiler(Compiler *compiler) {
-    dtor_ang_env(&compiler->env);
     dtor_list(&compiler->instr);
+    dtor_ang_env(&compiler->env);
+    for (size_t i = 0; i < compiler->compiled_ast.length; i++) {
+        Ast *ast = get_ptr(access_list(&compiler->compiled_ast, i));
+        destroy_ast(ast);
+        free(ast);
+    }
+    dtor_list(&compiler->compiled_ast);
+    dtor_parser(&compiler->parser);
+}
+
+void compile_code(Compiler *c, const char *code, const char *src_name) {
+    Ast *ast = parse(&c->parser, code, src_name);
+    append_list(&c->compiled_ast, from_ptr(ast));
+    // Don't know if this check should be tied to error checking
+    if (!ast || ast->nodes.length == 0) *c->enc_err = 1;
+    if (*c->enc_err) return;
+    #ifdef DEBUG
+    print_ast(ast, 0);
+    #endif
+    compile(c, ast);
 }
 
 void compile(Compiler *c, Ast *code) {
@@ -89,7 +110,7 @@ void compile_binary_op(Compiler *c, Ast *code) {
         error(code->assoc_token->line,
                 TYPE_ERROR,
                 "Cannot do binary operations on non-numbers.\n");
-        c->enc_err = 1;
+        *c->enc_err = 1;
         return;
     }
 
@@ -130,7 +151,7 @@ void compile_literal(Compiler *c, Ast *code) {
                 error(code->assoc_token->line,
                     INCOMPLETE_RECORD,
                     "Record type needs all members to be key value pairs.\n");
-                c->enc_err = 1;
+                *c->enc_err = 1;
                 return;
             }
             compile(c, get_child(code, i));
@@ -139,7 +160,7 @@ void compile_literal(Compiler *c, Ast *code) {
         ctor_list(&types);
         List slots;
         ctor_list(&slots);
-        for (int i = 0; i < code->nodes.length; i++) {
+        for (size_t i = 0; i < code->nodes.length; i++) {
             const Ang_Type *child_type = get_child(code, i)->eval_type;
             append_list(&types, from_ptr((void *) child_type));
             if (is_record) {
@@ -150,14 +171,14 @@ void compile_literal(Compiler *c, Ast *code) {
             } else {
                 // Populating slots with slot number
                 char *slot_num = calloc(num_digits(i) + 1, sizeof(char));
-                sprintf(slot_num, "%d", i);
+                sprintf(slot_num, "%lx", i);
                 append_list(&slots, from_ptr(slot_num));
             }
         }
         code->eval_type = get_tuple_type(c, &slots, &types);
         dtor_list(&types);
         for (size_t i = 0; i < code->nodes.length; i++) {
-            free(get_ptr(access_list(&slots, i)));
+            //free(get_ptr(access_list(&slots, i)));
         }
         dtor_list(&slots);
         append_list(&c->instr, from_double(CONS_TUPLE));
@@ -174,7 +195,7 @@ void compile_variable(Compiler *c, Ast *code) {
             UNDECLARED_VARIABLE,
             code->assoc_token->lexeme);
         fprintf(stderr, "\n");
-        c->enc_err = 1;
+        *c->enc_err = 1;
         return;
     }
     append_list(&c->instr, from_double(sym->global ? GLOAD : LOAD));
@@ -242,7 +263,7 @@ void compile_decl(Compiler *c, Ast *code) {
             type = get_child(code, 0)->eval_type;
         if (type != get_child(code, 0)->eval_type) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
-            c->enc_err = 1;
+            *c->enc_err = 1;
         }
     }
     code->eval_type = type;
@@ -251,7 +272,7 @@ void compile_decl(Compiler *c, Ast *code) {
     const char *sym = code->assoc_token->lexeme;
     if (symbol_exists(&c->env, sym)) {
         error(code->assoc_token->line, NAME_COLLISION, sym);
-        c->enc_err = 1;
+        *c->enc_err = 1;
         return;
     }
     create_symbol(&c->env, sym, type, loc, !local);
@@ -281,7 +302,7 @@ void compile_destr_decl(Compiler *c, Ast *code) {
             tuple_type = get_child(code, 1)->eval_type;
         if (tuple_type != get_child(code, 1)->eval_type) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
-            c->enc_err = 1;
+            *c->enc_err = 1;
         }
         append_list(&c->instr, from_double(STO_REG));
         append_list(&c->instr, from_double(A));
@@ -310,7 +331,7 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
         error(lhs->assoc_token->line,
             INSUFFICIENT_TUPLE,
             "Trying to destructure more slots than the tuple holds.\n");
-        c->enc_err = 1;
+        *c->enc_err = 1;
         return;
     }
     int local = c->parent != 0; // If the variables are global or local
@@ -359,7 +380,7 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
 
         if (symbol_exists(&c->env, sym)) {
             error(lhs->assoc_token->line, NAME_COLLISION, sym);
-            c->enc_err = 1;
+            *c->enc_err = 1;
             return;
         }
         create_symbol(&c->env, sym, slot_type, loc, !local);
@@ -405,7 +426,7 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
     if (!type) {
         error(code->assoc_token->line, UNKNOWN_TYPE, type_sym);
         fprintf(stderr, "\n");
-        c->enc_err = 1;
+        *c->enc_err = 1;
         return find_type(c, "und");
     }
     return type;
@@ -489,7 +510,7 @@ void compile_block(Compiler *c, Ast *code) {
     append_list(&c->instr, from_double(RESET_FP));
 
     code->eval_type = get_child(code, code->nodes.length - 1)->eval_type;
-    c->enc_err = block.enc_err;
+    *c->enc_err = *block.enc_err;
     dtor_compiler(&block);
 }
 

@@ -21,7 +21,13 @@ Value create_token_value(Token_Type type,
                          const Scanner *scanner,
                          const Value literal) {
     Token *t = malloc(sizeof(Token));
-    *t = (Token) { type, copy_cur_lexeme(scanner), literal, scanner->line };
+    *t = (Token) {
+        type,
+        copy_cur_lexeme(scanner),
+        literal,
+        scanner->line,
+        scanner->src_name
+    };
     return from_ptr((void *) t);
 }
 
@@ -34,8 +40,11 @@ const char *copy_cur_lexeme(const Scanner *scanner) {
 
 void add_token(List *t_list, const Scanner *scanner,
                Token_Type t, const Value literal) {
-    append_list(t_list,
-        create_token_value(t, scanner, literal));
+    Value tok = create_token_value(t, scanner, literal);
+    append_list(t_list, tok);
+    #ifdef DEBUG
+    print_token(get_ptr(tok));
+    #endif
 }
 
 int match(Scanner *scanner, char c) {
@@ -72,7 +81,7 @@ Value string(Scanner *scanner) {
     int len = scanner->current - scanner->start - 2;
     char *val = calloc(len + 1, sizeof(char));
     strncpy(val, scanner->src + scanner->start + 1, len);
-    return create_token_value(STR, scanner, from_ptr(val));
+    return from_ptr(val);
 }
 
 Value number(Scanner *scanner) {
@@ -82,7 +91,7 @@ Value number(Scanner *scanner) {
         while (isdigit(peek(scanner))) scanner->current++;
     }
     double val = strtod(scanner->src + scanner->start, NULL);
-    return create_token_value(NUM, scanner, from_double(val));
+    return from_double(val);
 }
 
 void populate_keywords(Hashtable *keywords) {
@@ -94,14 +103,13 @@ void populate_keywords(Hashtable *keywords) {
     set_hashtable(keywords, "return", from_double(RETURN));
 }
 
-List *tokenize(const char *src) {
-    Scanner scan = (Scanner) { src, strlen(src), 1, 0, 0 };
+int tokenize(List *tokens, const char *src, const char *src_name) {
+    size_t initial_length = tokens->length;
+    Scanner scan = (Scanner) { src, strlen(src), 1, 0, 0, src_name };
 
     Hashtable keywords;
     populate_keywords(&keywords);
 
-    List *tokens = malloc(sizeof(List));
-    ctor_list(tokens);
     while (scan.current < scan.srclen) {
         scan.start = scan.current;
         char c = src[scan.current++];
@@ -146,20 +154,18 @@ List *tokenize(const char *src) {
         case '"': {
             Value val = string(&scan);
             if (val.bits == nil_val.bits) {
-                destroy_tokens(tokens);
-                dtor_list(tokens);
-                free(tokens);
+                destroy_tokens_from_n(tokens, initial_length);
                 return 0;
             }
-            append_list(tokens, val);
+            add_token(tokens, &scan, STR, val);
             break;
         }
         default:
             if (isdigit(c)) {
                 Value val = number(&scan);
-                append_list(tokens, val);
+                add_token(tokens, &scan, NUM, val);
             } else if (c == '_' || isalpha(c)) {
-                while (peek(&scan) == '_' || isalnum(peek(&scan))) 
+                while (peek(&scan) == '_' || isalnum(peek(&scan)))
                     scan.current++;
                 const char *lexeme = copy_cur_lexeme(&scan);
                 Value keyword = access_hashtable(&keywords, lexeme);
@@ -169,26 +175,28 @@ List *tokenize(const char *src) {
                 add_token(tokens, &scan, type, nil_val);
             } else {
                 error(scan.line, UNEXPECTED_CHARACTER, "Unexpected Character");
-                destroy_tokens(tokens);
-                dtor_list(tokens);
-                free(tokens);
+                destroy_tokens_from_n(tokens, initial_length);
                 return 0;
             }
         }
     }
 
     scan.start = scan.current++;
-    dtor_hashtable(&keywords);
     add_token(tokens, &scan, TEOF, nil_val);
-    return tokens;
+    dtor_hashtable(&keywords);
+    return 1;
 }
 
-void destroy_tokens(List *tokens) {
-    for (size_t i = 0; i < tokens->length; i++) {
+void destroy_tokens_from_n(List *tokens, size_t n) {
+    for (size_t i = n; i < tokens->length; i++) {
         Token *tok = (Token *) get_ptr(access_list(tokens, i));
         free((void *) tok->lexeme);
         if (is_ptr(tok->literal)) free(get_ptr(tok->literal));
         free(tok);
     }
-    clear_list(tokens);
+    tokens->length = n;
+}
+
+void destroy_tokens(List *tokens) {
+    destroy_tokens_from_n(tokens, 0);
 }

@@ -14,7 +14,7 @@
     code(INSUFFICIENT_TUPLE) \
     code(UNCLOSED_BLOCK) \
     code(UNCLOSED_TUPLE) \
-    code(INCOMPLETE_RECORD)
+    code(INCOMPLETE_RECORD) \
 
 #define DEFINE_ENUM_CODE(type) type,
 typedef enum {

@@ -37,6 +37,7 @@ void dtor_ang_env(Ang_Env *env) {
                 tup_type = 0;
             }
             destroy_iter_hashtable(&tuple_iter);
+            t->slots.size = 0;
         }
     }
     destroy_iter_hashtable(&type_iter);
