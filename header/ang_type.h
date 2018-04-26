@@ -7,8 +7,8 @@ typedef struct {
     int id;
     const char *name;
     Value default_value;
-    Hashtable slots;
-    List slot_types;
+    Hashtable *slots;
+    List *slot_types;
 } Ang_Type;
 
 void ctor_ang_type(Ang_Type *type, int id, const char *name, Value default_val);

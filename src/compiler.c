@@ -212,8 +212,8 @@ void compile_accessor(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
     const Ang_Type *type = get_child(code, 0)->eval_type;
     const char *slot_name = get_child(code, 1)->assoc_token->lexeme;
-    int slot_num = access_hashtable(&type->slots, slot_name).as_int32;
-    code->eval_type = get_ptr(access_list(&type->slot_types, slot_num));
+    int slot_num = access_hashtable(type->slots, slot_name).as_int32;
+    code->eval_type = get_ptr(access_list(type->slot_types, slot_num));
 
     append_list(&c->instr, from_double(PUSH));
     append_list(&c->instr, from_double(slot_num));
@@ -232,8 +232,7 @@ void compile_type_decl(Compiler *c, Ast *code) {
         append_list(&c->instr, from_double(SET_DEFAULT_VAL));
         append_list(&c->instr, from_ptr((void *) type_name));
     } else {
-        append_list(&c->instr, from_double(PUSOBJ));
-        append_list(&c->instr, type->default_value);
+        push_default_value(c, type, type->default_value);
     }
 
     code->eval_type = type;
@@ -241,6 +240,8 @@ void compile_type_decl(Compiler *c, Ast *code) {
     // Register the new type
     Ang_Type *new_type = calloc(1, sizeof(Ang_Type));
     ctor_ang_type(new_type, type->id, type_name, type->default_value);
+    new_type->slots = type->slots;
+    new_type->slot_types = type->slot_types;
     set_hashtable(&c->env.types, type_name, from_ptr(new_type));
 }
 
@@ -257,7 +258,7 @@ void compile_decl(Compiler *c, Ast *code) {
         }
     }
     if (!has_assignment) {
-        push_default_value(c, type);
+        push_default_value(c, type, type->default_value);
     } else {
         if (type->id == UNDECLARED)
             type = get_child(code, 0)->eval_type;
@@ -327,7 +328,7 @@ void compile_destr_decl(Compiler *c, Ast *code) {
 }
 
 void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const Ang_Type *ttype) {
-    if (lhs->nodes.length > ttype->slot_types.length) {
+    if (lhs->nodes.length > ttype->slot_types->length) {
         error(lhs->assoc_token->line,
             INSUFFICIENT_TUPLE,
             "Trying to destructure more slots than the tuple holds.\n");
@@ -353,7 +354,7 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
                 append_list(&c->instr, from_double(STO_REG));
                 append_list(&c->instr, from_double(A));
             }
-            const Ang_Type *inner_ttype = get_ptr(access_list(&ttype->slot_types, i));
+            const Ang_Type *inner_ttype = get_ptr(access_list(ttype->slot_types, i));
             compile_destr_decl_helper(c, has_assignment, get_child(lhs, i), inner_ttype);
 
             // Restore outer tuple
@@ -367,8 +368,8 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
 
         const char *sym = get_child(lhs, i)->assoc_token->lexeme;
         const Ang_Type *slot_type =
-            get_ptr(access_list(&ttype->slot_types, i));
-        if (!has_assignment) push_default_value(c, slot_type);
+            get_ptr(access_list(ttype->slot_types, i));
+        if (!has_assignment) push_default_value(c, slot_type, slot_type->default_value);
         else {
             append_list(&c->instr, from_double(LOAD_REG));
             append_list(&c->instr, from_double(A));
@@ -466,6 +467,10 @@ Ang_Type *construct_tuple(const List *slots, const List *types, int id, char *tu
     }
     Ang_Type *t = calloc(1, sizeof(Ang_Type));
     ctor_ang_type(t, id, tuple_name, from_ptr(default_tuple));
+    t->slots = calloc(1, sizeof(Hashtable));
+    ctor_hashtable(t->slots);
+    t->slot_types = calloc(1, sizeof(List));
+    ctor_list(t->slot_types);
     for (size_t i = 0; i < slots->length; i++) {
         const char *sym = get_ptr(access_list(slots, i));
         const Ang_Type *slot_type = get_ptr(access_list(types, i));
@@ -477,11 +482,11 @@ Ang_Type *construct_tuple(const List *slots, const List *types, int id, char *tu
 Ang_Type *get_tuple_type(const Compiler *c, const List *slots, const List *types) {
     Ang_Type *tuple = find_type(c, "(");
     char *type_name = construct_tuple_name(slots, types);
-    Ang_Type *tuple_type = get_ptr(access_hashtable(&tuple->slots, type_name));
+    Ang_Type *tuple_type = get_ptr(access_hashtable(tuple->slots, type_name));
     if (!tuple_type) {
         Ang_Type *t = construct_tuple(slots, types, num_types(c) + 1, type_name);
         tuple_type = t;
-        set_hashtable(&tuple->slots, type_name, from_ptr(t));
+        set_hashtable(tuple->slots, type_name, from_ptr(t));
     } else {
         free(type_name);
     }
@@ -514,19 +519,24 @@ void compile_block(Compiler *c, Ast *code) {
     dtor_compiler(&block);
 }
 
-void push_default_value(Compiler *c, const Ang_Type *t) {
+void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
     if (t->id == NUM_TYPE) {
+        // Base case for Num type
         append_list(&c->instr, from_double(PUSH));
-        append_list(&c->instr, t->default_value);
+        append_list(&c->instr, default_value);
     } else {
-        append_list(&c->instr, from_double(PUSOBJ));
+        // Construct default value
+        const List *def_val = get_ptr(default_value);
+        for (size_t i = 0; i < t->slot_types->length; i++) {
+            const Ang_Type *slot_type = get_ptr(access_list(t->slot_types, i));
+            push_default_value(c, slot_type, access_list(def_val, i));
+        }
+        append_list(&c->instr, from_double(CONS_TUPLE));
+        // Push on the type of the object
         Value type_val = from_ptr((void *) t);
         append_list(&c->instr, type_val);
-        List *obj = get_ptr(t->default_value);
-        List *cpy = malloc(sizeof(List));
-        ctor_list(cpy);
-        copy_list(obj, cpy);
-        append_list(&c->instr, from_ptr(cpy));
+        // Push the number of slots
+        append_list(&c->instr, from_double(t->slot_types->length));
     }
 }
 
@@ -547,7 +557,7 @@ Ang_Type *find_type(const Compiler *c, const char *sym) {
     }
     if (!c->parent) {
         Ang_Type *tuple = get_ptr(access_hashtable(&c->env.types, "("));
-        type = access_hashtable(&tuple->slots, sym);
+        type = access_hashtable(tuple->slots, sym);
         if (type.bits != nil_val.bits) {
             return get_ptr(type);
         }
