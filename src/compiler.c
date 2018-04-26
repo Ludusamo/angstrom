@@ -212,7 +212,15 @@ void compile_accessor(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
     const Ang_Type *type = get_child(code, 0)->eval_type;
     const char *slot_name = get_child(code, 1)->assoc_token->lexeme;
-    int slot_num = access_hashtable(type->slots, slot_name).as_int32;
+    Value slot_num_val = access_hashtable(type->slots, slot_name);
+    if (slot_num_val.bits == nil_val.bits) {
+        char error_msg[255];
+        sprintf(error_msg, "Type <%s> does not have the slot %s.\n", type->name, slot_name);
+        error(code->assoc_token->line, INVALID_SLOT, error_msg);
+        *c->enc_err = 1;
+        return;
+    }
+    int slot_num = slot_num_val.as_int32;
     code->eval_type = get_ptr(access_list(type->slot_types, slot_num));
 
     append_list(&c->instr, from_double(PUSH));
@@ -262,7 +270,7 @@ void compile_decl(Compiler *c, Ast *code) {
     } else {
         if (type->id == UNDECLARED)
             type = get_child(code, 0)->eval_type;
-        if (type != get_child(code, 0)->eval_type) {
+        if (type_equality(type, get_child(code, 0)->eval_type)) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
             *c->enc_err = 1;
         }
@@ -301,7 +309,7 @@ void compile_destr_decl(Compiler *c, Ast *code) {
     if (has_assignment) {
         if (tuple_type->id == UNDECLARED)
             tuple_type = get_child(code, 1)->eval_type;
-        if (tuple_type != get_child(code, 1)->eval_type) {
+        if (!type_equality(tuple_type, get_child(code, 1)->eval_type)) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
             *c->enc_err = 1;
         }

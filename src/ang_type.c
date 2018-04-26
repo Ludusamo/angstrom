@@ -14,6 +14,24 @@ void dtor_ang_type(Ang_Type *type) {
     type->slot_types = 0;
 }
 
+int type_equality(const Ang_Type *t1, const Ang_Type *t2) {
+    if (t1->id == t2->id) return 1;
+    Iter iter;
+    iter_hashtable(&iter, t1->slots);
+    foreach(iter) {
+        // Check to see if they have the same keys
+        const Keyval *slot = get_ptr(val_iter_hashtable(&iter));
+        Value t2_slot_num = access_hashtable(t2->slots, slot->key);
+        if (t2_slot_num.bits == nil_val.bits) return 0;
+
+        // Check to see if the type of their slot is the same
+        const Ang_Type *slot_type1 = get_ptr(access_list(t1->slot_types, slot->val.as_int32));
+        const Ang_Type *slot_type2 = get_ptr(access_list(t2->slot_types, t2_slot_num.as_int32));
+        if (!type_equality(slot_type1, slot_type2)) return 0;
+    }
+    return 1;
+}
+
 void add_slot(Ang_Type *type, const char *sym, const Ang_Type *slot_type) {
     int slot_num = type->slots->size;
     set_hashtable(type->slots, sym, from_double(slot_num));
