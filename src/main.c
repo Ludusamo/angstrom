@@ -109,7 +109,6 @@ void run_repl() {
     set_hashtable(&vm.compiler.env.types, "und", from_ptr(&defaults.und_default));
     set_hashtable(&vm.compiler.env.types, "Num", from_ptr(&defaults.num_default));
     set_hashtable(&vm.compiler.env.types, "Bool", from_ptr(&defaults.bool_default));
-    set_hashtable(&vm.compiler.env.types, "(", from_ptr(&defaults.tuple_default));
 
     char *expr;
     for (;;) {
