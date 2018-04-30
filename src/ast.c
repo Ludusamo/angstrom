@@ -175,9 +175,6 @@ Ast *parse_type_decl(Parser *parser) {
     if (match_token(parser, TYPE_KEYWORD)) {
         if (consume_token(parser, IDENT, "Expected identifier.\n")) {
             Ast *expr = create_ast(TYPE_DECL, previous_token(parser));
-            if (match_token(parser, EQ)) {
-                append_list(&expr->nodes, from_ptr(parse_expression(parser)));
-            }
             if (consume_token(parser, COLON_COLON, "Expected double colon.\n")) {
                 append_list(&expr->nodes, from_ptr(parse_type(parser)));
                 return expr;

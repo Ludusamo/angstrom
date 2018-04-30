@@ -270,9 +270,10 @@ void compile_decl(Compiler *c, Ast *code) {
     } else {
         if (type->id == UNDECLARED)
             type = get_child(code, 0)->eval_type;
-        if (type_equality(type, get_child(code, 0)->eval_type)) {
+        if (!type_equality(type, get_child(code, 0)->eval_type)) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
             *c->enc_err = 1;
+            return;
         }
     }
     code->eval_type = type;
@@ -487,14 +488,13 @@ Ang_Type *construct_tuple(const List *slots, const List *types, int id, char *tu
     return t;
 }
 
-Ang_Type *get_tuple_type(const Compiler *c, const List *slots, const List *types) {
-    Ang_Type *tuple = find_type(c, "(");
+Ang_Type *get_tuple_type(Compiler *c, const List *slots, const List *types) {
     char *type_name = construct_tuple_name(slots, types);
-    Ang_Type *tuple_type = get_ptr(access_hashtable(tuple->slots, type_name));
+    Ang_Type *tuple_type = get_ptr(access_hashtable(&c->env.types, type_name));
     if (!tuple_type) {
         Ang_Type *t = construct_tuple(slots, types, num_types(c) + 1, type_name);
         tuple_type = t;
-        set_hashtable(tuple->slots, type_name, from_ptr(t));
+        set_hashtable(&c->env.types, type_name, from_ptr(t));
     } else {
         free(type_name);
     }
@@ -562,13 +562,6 @@ Ang_Type *find_type(const Compiler *c, const char *sym) {
     Value type = access_hashtable(&c->env.types, sym);
     if (type.bits != nil_val.bits) {
         return get_ptr(type);
-    }
-    if (!c->parent) {
-        Ang_Type *tuple = get_ptr(access_hashtable(&c->env.types, "("));
-        type = access_hashtable(tuple->slots, sym);
-        if (type.bits != nil_val.bits) {
-            return get_ptr(type);
-        }
     }
     return find_type(c->parent, sym);
 }
