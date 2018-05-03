@@ -84,8 +84,16 @@ Value string(Scanner *scanner) {
     return from_ptr(val);
 }
 
+Value integer(Scanner *scanner) {
+    while (isdigit(peek(scanner))) scanner->current++;
+    double val = strtod(scanner->src + scanner->start, NULL);
+    return from_double(val);
+}
+
 Value number(Scanner *scanner) {
     while (isdigit(peek(scanner))) scanner->current++;
+
+    // If this number is in reference to an accessor, don't scan for decimals
     if (peek(scanner) == '.' && isdigit(peek_next(scanner))) {
         scanner->current++;
         while (isdigit(peek(scanner))) scanner->current++;
@@ -101,6 +109,10 @@ void populate_keywords(Hashtable *keywords) {
     set_hashtable(keywords, "_", from_double(UNDERSCORE));
     set_hashtable(keywords, "type", from_double(TYPE_KEYWORD));
     set_hashtable(keywords, "return", from_double(RETURN));
+}
+
+const Token *last_scanned_token(const List *tokens) {
+    return get_ptr(access_list(tokens, tokens->length - 1));
 }
 
 int tokenize(List *tokens, const char *src, const char *src_name) {
@@ -162,7 +174,9 @@ int tokenize(List *tokens, const char *src, const char *src_name) {
         }
         default:
             if (isdigit(c)) {
-                Value val = number(&scan);
+                Value val = last_scanned_token(tokens)->type == DOT
+                    ? integer(&scan)
+                    : number(&scan);
                 add_token(tokens, &scan, NUM, val);
             } else if (c == '_' || isalpha(c)) {
                 while (peek(&scan) == '_' || isalnum(peek(&scan)))
