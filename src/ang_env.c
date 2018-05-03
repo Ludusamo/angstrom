@@ -48,7 +48,7 @@ void dtor_ang_env(Ang_Env *env) {
             dtor_ang_type(t);
             free(t);
             t = 0;
-        } else if (t->id > TUPLE_TYPE) {
+        } else if (t->id >= PRIMITIVE_COUNT) {
             free(t);
         }
     }

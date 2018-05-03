@@ -8,8 +8,7 @@
     code(NUM_TYPE) \
     code(BOOL_TYPE) \
     code(STRING_TYPE) \
-    code(TUPLE_TYPE) \
-    code(NUM_PRIMITIVE)
+    code(PRIMITIVE_COUNT)
 
 #define DEFINE_ENUM_TYPE(type) type,
 typedef enum {
