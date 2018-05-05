@@ -213,7 +213,8 @@ void compile_accessor(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
     const Ang_Type *type = get_child(code, 0)->eval_type;
     const char *slot_name = get_child(code, 1)->assoc_token->lexeme;
-    Value slot_num_val = access_hashtable(type->slots, slot_name);
+    Value slot_num_val = nil_val;
+    if (type->slots) access_hashtable(type->slots, slot_name);
     if (slot_num_val.bits == nil_val.bits) {
         char error_msg[255];
         sprintf(error_msg, "Type <%s> does not have the slot %s.\n", type->name, slot_name);
