@@ -523,6 +523,7 @@ Ang_Type *get_tuple_type(Compiler *c, const List *slots, const List *types) {
 void compile_block(Compiler *c, Ast *code) {
     Compiler block;
     ctor_compiler(&block);
+    block.enc_err = c->enc_err;
     block.parent = c;
     append_list(&c->instr, from_double(SET_FP));
     for (size_t i = 0; i < code->nodes.length; i++) {
