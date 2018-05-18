@@ -555,7 +555,7 @@ void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
     } else {
         // Construct default value
         const List *def_val = get_ptr(default_value);
-        for (size_t i = 0; i < t->slot_types->length; i++) {
+        for (int i = t->slot_types->length - 1; i >= 0; i--) {
             const Ang_Type *slot_type = get_ptr(access_list(t->slot_types, i));
             push_default_value(c, slot_type, access_list(def_val, i));
         }
