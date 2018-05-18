@@ -15,8 +15,9 @@
     code(MUL_OP) \
     code(UNARY_OP) \
     code(VAR_DECL) \
-    code(DESTR_DECL) \
     code(TYPE_DECL) \
+    code(DESTR_DECL) \
+    code(TYPE) \
     code(ACCESSOR) \
     code(VARIABLE) \
     code(WILDCARD) \
@@ -37,9 +38,12 @@ typedef struct {
 
 typedef struct {
     int current;
-    const List *tokens;
-    int enc_err;
+    List tokens;
+    int *enc_err;
 } Parser;
+
+void ctor_parser(Parser *p);
+void dtor_parser(Parser *p);
 
 const char *ast_type_to_str(Ast_Type t);
 void print_ast(const Ast *ast, int depth);
@@ -62,6 +66,7 @@ Ast *parse_comparison(Parser *parser);
 Ast *parse_addition(Parser *parser);
 Ast *parse_multiplication(Parser *parser);
 Ast *parse_unary(Parser *parser);
+Ast *parse_type_decl(Parser *parser);
 Ast *parse_decl(Parser *parser);
 Ast *parse_destr_decl(Parser *parser);
 Ast *parse_type(Parser *parser);
@@ -70,7 +75,7 @@ Ast *parse_primary(Parser *parser);
 Ast *parse_accessor(Parser *parser, Ast *prev);
 void destroy_ast(Ast *ast);
 
-Ast *parse(const List *tokens);
+Ast *parse(Parser *p, const char *code, const char *src_name);
 
 Ast *get_child(const Ast *ast, int child_i);
 

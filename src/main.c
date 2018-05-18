@@ -39,7 +39,7 @@ char *get_line(void) {
 }
 
 void run(const char *exp) {
-    // Tokenize
+    /*// Tokenize
     List *tokens = tokenize(exp);
     if (tokens == 0) {
         printf("\n");
@@ -91,7 +91,7 @@ void run(const char *exp) {
     free(ast);
     destroy_tokens(tokens);
     dtor_list(tokens);
-    free(tokens);
+    free(tokens);*/
 }
 
 void run_script(char *file_path) {
@@ -99,13 +99,36 @@ void run_script(char *file_path) {
 }
 
 void run_repl() {
+    Ang_VM vm;
+    ctor_ang_vm(&vm, 100);
+    #ifdef DEBUG
+    vm.trace = 1;
+    #endif
+    Primitive_Types defaults;
+    ctor_primitive_types(&defaults);
+    set_hashtable(&vm.compiler.env.types, "und", from_ptr(&defaults.und_default));
+    set_hashtable(&vm.compiler.env.types, "Num", from_ptr(&defaults.num_default));
+    set_hashtable(&vm.compiler.env.types, "Bool", from_ptr(&defaults.bool_default));
+
     char *expr;
     for (;;) {
         printf("> ");
         expr = get_line();
-        run(expr);
+        if (strcmp(expr, "exit\n") == 0) {
+            free(expr);
+            break;
+        }
+        run_code(&vm, expr, "");
+        if (!vm.enc_err) {
+            Ang_Obj *result = pop_stack(&vm.mem);
+            print_ang_obj(result);
+        } else {
+            vm.enc_err = 0;
+        }
         free(expr);
     }
+    dtor_ang_vm(&vm);
+    dtor_primitive_types(&defaults);
 }
 
 int main(int argc, char *argv[]) {
