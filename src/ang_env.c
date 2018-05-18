@@ -47,10 +47,11 @@ void dtor_ang_env(Ang_Env *env) {
             // Destroy the tuple type
             dtor_ang_type(t);
             free(t);
-            t = 0;
-        } else if (t->id >= PRIMITIVE_COUNT) {
+        } else if (strcmp(t->name, "Und") && strcmp(t->name, "Num") 
+                && strcmp(t->name, "Bool") && strcmp(t->name, "String")) {
             free(t);
         }
+        t = 0;
     }
     destroy_iter_hashtable(&type_iter);
     dtor_hashtable(&env->types);
