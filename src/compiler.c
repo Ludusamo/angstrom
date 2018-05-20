@@ -78,7 +78,10 @@ void compile(Compiler *c, Ast *code) {
         compile_block(c, code);
         break;
     default:
-        break;
+        error(code->assoc_token->line, UNKNOWN_AST, ast_type_to_str(code->type));
+        fprintf(stderr, "\n");
+        *c->enc_err = 1;
+        return;
     }
 }
 
@@ -89,6 +92,7 @@ void compile_unary_op(Compiler *c, Ast *code) {
             error(code->assoc_token->line,
                     TYPE_ERROR,
                     "Cannot do unary '-' operations on non-numbers.\n");
+            *c->enc_err = 1;
         }
         code->eval_type = find_type(c, "Num");
         append_list(&c->instr, from_double(PUSH_0));

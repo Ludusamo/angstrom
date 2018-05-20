@@ -297,6 +297,15 @@ Ast *parse_block(Parser *parser) {
         expr = parse_accessor(parser, expr);
         return expr;
     }
+    return parse_return(parser);
+}
+
+Ast *parse_return(Parser *parser) {
+    if (match_token(parser, RETURN)) {
+        Ast *expr = create_ast(RET_EXPR, previous_token(parser));
+        append_list(&expr->nodes, from_ptr(parse_expression(parser)));
+        return expr;
+    }
     return parse_primary(parser);
 }
 

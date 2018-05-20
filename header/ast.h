@@ -21,6 +21,7 @@
     code(ACCESSOR) \
     code(VARIABLE) \
     code(WILDCARD) \
+    code(RET_EXPR) \
     code(KEYVAL)
 
 #define DEFINE_ENUM_TYPE(type) type,
@@ -71,6 +72,7 @@ Ast *parse_decl(Parser *parser);
 Ast *parse_destr_decl(Parser *parser);
 Ast *parse_type(Parser *parser);
 Ast *parse_block(Parser *parser);
+Ast *parse_return(Parser *parser);
 Ast *parse_primary(Parser *parser);
 Ast *parse_accessor(Parser *parser, Ast *prev);
 void destroy_ast(Ast *ast);
