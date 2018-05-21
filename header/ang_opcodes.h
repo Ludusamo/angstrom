@@ -32,6 +32,7 @@
     code(LOAD_REG, 1) \
     code(SWAP_REG, 2) \
     code(MOV_REG, 2) \
+    code(JMP, 1) \
     code(CALL, 2) \
     code(RET, 0)
 
