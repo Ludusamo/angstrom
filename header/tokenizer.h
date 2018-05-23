@@ -47,7 +47,7 @@ typedef enum {
 typedef struct {
     Token_Type type;
     const char *lexeme;
-    const Value literal;
+    Value literal;
     int line;
     const char *src_name;
 } Token;
