@@ -21,7 +21,7 @@ void dtor_ang_env(Ang_Env *env) {
     foreach (type_iter) {
         Ang_Type *t =
             get_ptr(((Keyval*) (get_ptr(val_iter_hashtable(&type_iter))))->val);
-        if (t->name[0] == '(') {
+        if (t->cat == PRODUCT) {
             free((void*) t->name);
             List *default_tuple = get_ptr(t->default_value);
             dtor_list(default_tuple);
@@ -47,8 +47,7 @@ void dtor_ang_env(Ang_Env *env) {
             // Destroy the tuple type
             dtor_ang_type(t);
             free(t);
-        } else if (strcmp(t->name, "Und") && strcmp(t->name, "Num") 
-                && strcmp(t->name, "Bool") && strcmp(t->name, "String")) {
+        } else if (t->cat == USER) {
             free(t);
         }
         t = 0;

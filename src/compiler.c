@@ -250,14 +250,14 @@ void compile_type_decl(Compiler *c, Ast *code) {
 
     // Register the new type
     Ang_Type *new_type = calloc(1, sizeof(Ang_Type));
-    ctor_ang_type(new_type, type->id, type_name, type->default_value);
+    ctor_ang_type(new_type, type->id, type_name, USER, type->default_value);
     new_type->slots = type->slots;
     new_type->slot_types = type->slot_types;
     set_hashtable(&c->env.types, type_name, from_ptr(new_type));
 }
 
 void compile_decl(Compiler *c, Ast *code) {
-    const Ang_Type *type = find_type(c, "und");
+    const Ang_Type *type = find_type(c, "Und");
     int has_assignment = 0;
     for (size_t i = 0; i < code->nodes.length; i++) {
         Ast *child = get_child(code, i);
@@ -286,6 +286,7 @@ void compile_decl(Compiler *c, Ast *code) {
     const char *sym = code->assoc_token->lexeme;
     if (symbol_exists(&c->env, sym)) {
         error(code->assoc_token->line, NAME_COLLISION, sym);
+        fprintf(stderr, "\n");
         *c->enc_err = 1;
         return;
     }
@@ -300,7 +301,7 @@ void compile_decl(Compiler *c, Ast *code) {
 }
 
 void compile_destr_decl(Compiler *c, Ast *code) {
-    const Ang_Type *tuple_type = find_type(c, "und");
+    const Ang_Type *tuple_type = find_type(c, "Und");
     int has_assignment = 0;
     for (size_t i = 1; i < code->nodes.length; i++) {
         Ast *child = get_child(code, i);
@@ -453,7 +454,7 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
         error(code->assoc_token->line, UNKNOWN_TYPE, type_sym);
         fprintf(stderr, "\n");
         *c->enc_err = 1;
-        return find_type(c, "und");
+        return find_type(c, "Und");
     }
     return type;
 }
@@ -491,7 +492,7 @@ Ang_Type *construct_tuple(const List *slots, const List *types, int id, char *tu
         append_list(default_tuple, child_type->default_value);
     }
     Ang_Type *t = calloc(1, sizeof(Ang_Type));
-    ctor_ang_type(t, id, tuple_name, from_ptr(default_tuple));
+    ctor_ang_type(t, id, tuple_name, PRODUCT, from_ptr(default_tuple));
     t->slots = calloc(1, sizeof(Hashtable));
     ctor_hashtable(t->slots);
     t->slot_types = calloc(1, sizeof(List));

@@ -3,10 +3,12 @@
 #include "ang_primitives.h"
 #include <stdio.h>
 
-void ctor_ang_type(Ang_Type *type, int id, const char *name, Value default_val) {
-    *type = (Ang_Type) { id, name, default_val };
-    type->slots = 0;
-    type->slot_types = 0;
+void ctor_ang_type(Ang_Type *type,
+        int id,
+        const char *name,
+        Type_Category cat,
+        Value default_val) {
+    *type = (Ang_Type) { id, name, cat, default_val, 0, 0};
 }
 
 void dtor_ang_type(Ang_Type *type) {
@@ -16,6 +18,7 @@ void dtor_ang_type(Ang_Type *type) {
 
 int type_equality(const Ang_Type *t1, const Ang_Type *t2) {
     if (t1->id == t2->id) return 1;
+    if (t1->cat == PRIMITIVE) return 0;
     Iter iter;
     iter_hashtable(&iter, t1->slots);
     foreach(iter) {
