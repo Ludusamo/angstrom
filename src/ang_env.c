@@ -76,3 +76,7 @@ void destroy_symbol(Ang_Env *env, const char *sym) {
     symbol = 0;
     delete_hashtable(&env->symbols, sym);
 }
+
+void add_type(Ang_Env *env, const Ang_Type *type) {
+    set_hashtable(&env->types, type->name, from_ptr((void *) type));
+}

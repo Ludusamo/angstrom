@@ -14,6 +14,20 @@ void dtor_ang_type(Ang_Type *type) {
     type->slot_types = 0;
 }
 
+Ang_Type *copy_ang_type(const Ang_Type *src, Ang_Type *dest) {
+    ctor_ang_type(dest, src->id, src->name, src->default_value);
+
+    dest->slots = calloc(1, sizeof(Hashtable));
+    ctor_hashtable(dest->slots);
+    copy_hashtable(src->slots, dest->slots);
+
+    dest->slot_types = calloc(1, sizeof(List));
+    ctor_list(dest->slot_types);
+    copy_list(src->slot_types, dest->slot_types);
+
+    return dest;
+}
+
 int type_equality(const Ang_Type *t1, const Ang_Type *t2) {
     if (t1->id == t2->id) return 1;
     Iter iter;

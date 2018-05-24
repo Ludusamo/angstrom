@@ -12,12 +12,14 @@ void ctor_compiler(Compiler *compiler) {
     ctor_ang_env(&compiler->env);
     compiler->parent = 0;
     ctor_list(&compiler->compiled_ast);
+    ctor_list(&compiler->jmp_locs);
     ctor_parser(&compiler->parser);
     compiler->parser.enc_err = compiler->enc_err;
 }
 
 void dtor_compiler(Compiler *compiler) {
     dtor_list(&compiler->instr);
+    dtor_list(&compiler->jmp_locs);
     dtor_ang_env(&compiler->env);
     for (size_t i = 0; i < compiler->compiled_ast.length; i++) {
         Ast *ast = get_ptr(access_list(&compiler->compiled_ast, i));
@@ -76,6 +78,9 @@ void compile(Compiler *c, Ast *code) {
         break;
     case BLOCK:
         compile_block(c, code);
+        break;
+    case RET_EXPR:
+        compile_return(c, code);
         break;
     default:
         error(code->assoc_token->line, UNKNOWN_AST, ast_type_to_str(code->type));
@@ -257,7 +262,7 @@ void compile_type_decl(Compiler *c, Ast *code) {
     ctor_ang_type(new_type, type->id, type_name, type->default_value);
     new_type->slots = type->slots;
     new_type->slot_types = type->slot_types;
-    set_hashtable(&c->env.types, type_name, from_ptr(new_type));
+    add_type(&c->env, new_type);
 }
 
 void compile_decl(Compiler *c, Ast *code) {
@@ -301,6 +306,21 @@ void compile_decl(Compiler *c, Ast *code) {
     }
     append_list(&c->instr, from_double(local ? LOAD : GLOAD));
     append_list(&c->instr, from_double(loc));
+}
+
+void compile_return(Compiler *c, Ast *code) {
+    if (!c->parent) {
+        error(code->assoc_token->line,
+            NON_BLOCK_RETURN,
+            "Cannot return outside of a block.\n");
+        *c->enc_err = 1;
+        return;
+    }
+    compile(c, get_child(code, 0));
+    code->eval_type = get_child(code, 0)->eval_type;
+    append_list(&c->instr, from_double(JMP));
+    append_list(&c->jmp_locs, from_double(c->instr.length));
+    append_list(&c->instr, nil_val);
 }
 
 void compile_destr_decl(Compiler *c, Ast *code) {
@@ -513,11 +533,10 @@ Ang_Type *construct_tuple(const List *slots, const List *types, int id, char *tu
 
 Ang_Type *get_tuple_type(Compiler *c, const List *slots, const List *types) {
     char *type_name = construct_tuple_name(slots, types);
-    Ang_Type *tuple_type = get_ptr(access_hashtable(&c->env.types, type_name));
+    Ang_Type *tuple_type = find_type(c, type_name);
     if (!tuple_type) {
-        Ang_Type *t = construct_tuple(slots, types, num_types(c) + 1, type_name);
-        tuple_type = t;
-        set_hashtable(&c->env.types, type_name, from_ptr(t));
+        tuple_type = construct_tuple(slots, types, num_types(c) + 1, type_name);
+        add_type(&get_root_compiler(c)->env, tuple_type);
     } else {
         free(type_name);
     }
@@ -529,16 +548,30 @@ void compile_block(Compiler *c, Ast *code) {
     ctor_compiler(&block);
     block.enc_err = c->enc_err;
     block.parent = c;
+
     append_list(&c->instr, from_double(SET_FP));
+
+    // Compile all block expressions
     for (size_t i = 0; i < code->nodes.length; i++) {
         compile(&block, get_child(code, i));
         if (i + 1 != code->nodes.length)
             append_list(&block.instr, from_double(POP));
     }
+
+    // Set all return jump locations to here
+    Value jmp_loc = from_double(c->instr.length + block.instr.length);
+    for (size_t i = 0; i < block.jmp_locs.length; i++) {
+        int jmp_instr = access_list(&block.jmp_locs, i).as_int32;
+        set_list(&block.instr, jmp_instr, jmp_loc);
+    }
+
     for (size_t i = 0; i < block.instr.length; i++) {
         append_list(&c->instr, access_list(&block.instr, i));
     }
+
     append_list(&c->instr, from_double(STORET));
+
+    // Pop all local variables
     if (block.env.symbols.size > 0) {
         append_list(&c->instr, from_double(POPN));
         append_list(&c->instr, from_double(block.env.symbols.size));
@@ -546,6 +579,7 @@ void compile_block(Compiler *c, Ast *code) {
     append_list(&c->instr, from_double(PUSRET));
     append_list(&c->instr, from_double(RESET_FP));
 
+    // Return type of block
     code->eval_type = get_child(code, code->nodes.length - 1)->eval_type;
     *c->enc_err = *block.enc_err;
     dtor_compiler(&block);
@@ -606,4 +640,9 @@ size_t num_types(const Compiler *c) {
         c = c->parent;
     }
     return num;
+}
+
+Compiler *get_root_compiler(Compiler *c) {
+    while (c->parent) c = c->parent;
+    return c;
 }

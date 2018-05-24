@@ -17,6 +17,7 @@
     code(UNCLOSED_TUPLE) \
     code(INCOMPLETE_RECORD) \
     code(UNKNOWN_AST) \
+    code(NON_BLOCK_RETURN) \
 
 #define DEFINE_ENUM_CODE(type) type,
 typedef enum {
