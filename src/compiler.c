@@ -261,7 +261,9 @@ void compile_decl(Compiler *c, Ast *code) {
     int has_assignment = 0;
     for (size_t i = 0; i < code->nodes.length; i++) {
         Ast *child = get_child(code, i);
-        if (child->type == TYPE) {
+        if (child->type == TYPE ||
+                child->type == SUM_TYPE ||
+                child->type == PRODUCT_TYPE) {
             type = compile_type(c, child);
             if (!type) return;
         } else {
@@ -305,7 +307,9 @@ void compile_destr_decl(Compiler *c, Ast *code) {
     int has_assignment = 0;
     for (size_t i = 1; i < code->nodes.length; i++) {
         Ast *child = get_child(code, i);
-        if (child->type == TYPE) {
+        if (child->type == TYPE ||
+                child->type == SUM_TYPE ||
+                child->type == PRODUCT_TYPE) {
             tuple_type = compile_type(c, child);
             if (!tuple_type) return;
         } else {
@@ -411,7 +415,7 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
 Ang_Type *compile_type(Compiler *c, Ast *code) {
     if (code->type == KEYVAL) return compile_type(c, get_child(code, 0));
     const char *type_sym = code->assoc_token->lexeme;
-    if (type_sym[0] == '(') {
+    if (code->type == PRODUCT_TYPE) {
         int is_record = get_child(code, 0)->type == KEYVAL;
         List types;
         ctor_list(&types);

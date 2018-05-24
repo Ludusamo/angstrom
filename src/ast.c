@@ -244,16 +244,15 @@ Ast *parse_destr_decl(Parser *parser) {
 }
 
 Ast *parse_type(Parser *parser) {
+    Ast *expr = 0;
     if (match_token(parser, IDENT)) {
-        Ast *expr = create_ast(TYPE, previous_token(parser));
+        expr = create_ast(TYPE, previous_token(parser));
         if (match_token(parser, COLON)) {
             expr->type = KEYVAL;
             append_list(&expr->nodes, from_ptr(parse_type(parser)));
-            return expr;
         }
-        return expr;
     } else if (match_token(parser, LPAREN)) {
-        Ast *expr = create_ast(TYPE, previous_token(parser));
+        expr = create_ast(PRODUCT_TYPE, previous_token(parser));
         while (peek_token(parser, 1)->type != RPAREN) {
             append_list(&expr->nodes, from_ptr(parse_type(parser)));
             if (peek_token(parser, 1)->type == COMMA)
@@ -269,14 +268,18 @@ Ast *parse_type(Parser *parser) {
             }
         }
         consume_token(parser, RPAREN, "Panic...");
-        return expr;
     } else {
         int lineno = peek_token(parser, 1)->line;
         error(lineno, UNEXPECTED_TOKEN, "Expected type identifier.\n");
         *parser->enc_err = 1;
         synchronize(parser);
     }
-    return 0;
+
+    // Sum Type
+    //if (match_token(parser, PIPE)) {
+    //    Ast *sum_type = create_ast(TYPE, pre
+    //}
+    return expr;
 }
 
 Ast *parse_block(Parser *parser) {

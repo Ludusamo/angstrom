@@ -18,6 +18,8 @@
     code(TYPE_DECL) \
     code(DESTR_DECL) \
     code(TYPE) \
+    code(PRODUCT_TYPE) \
+    code(SUM_TYPE) \
     code(ACCESSOR) \
     code(VARIABLE) \
     code(WILDCARD) \
