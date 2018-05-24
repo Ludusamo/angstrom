@@ -8,7 +8,7 @@ void ctor_ang_type(Ang_Type *type,
         const char *name,
         Type_Category cat,
         Value default_val) {
-    *type = (Ang_Type) { id, name, cat, default_val, 0, 0};
+    *type = (Ang_Type) { id, name, cat, default_val, 0, 0, 0 };
 }
 
 void dtor_ang_type(Ang_Type *type) {

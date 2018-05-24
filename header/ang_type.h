@@ -6,8 +6,7 @@
 typedef enum {
     PRIMITIVE,
     SUM,
-    PRODUCT,
-    USER
+    PRODUCT
 } Type_Category;
 
 typedef struct {
@@ -17,6 +16,7 @@ typedef struct {
     Value default_value;
     Hashtable *slots;
     List *slot_types;
+    int user_defined;
 } Ang_Type;
 
 void ctor_ang_type(Ang_Type *type,

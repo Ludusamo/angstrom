@@ -276,9 +276,12 @@ Ast *parse_type(Parser *parser) {
     }
 
     // Sum Type
-    //if (match_token(parser, PIPE)) {
-    //    Ast *sum_type = create_ast(TYPE, pre
-    //}
+    if (match_token(parser, PIPE)) {
+        Ast *sum_type = create_ast(SUM_TYPE, previous_token(parser));
+        append_list(&sum_type->nodes, from_ptr(expr));
+        append_list(&sum_type->nodes, from_ptr(parse_type(parser)));
+        expr = sum_type;
+    }
     return expr;
 }
 
