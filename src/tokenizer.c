@@ -156,6 +156,7 @@ int tokenize(List *tokens, const char *src, const char *src_name) {
         case '>':
             add_token(tokens, &scan, match(&scan, '=') ? GTE : GT, nil_val);
             break;
+        case '|': add_token(tokens, &scan, PIPE, nil_val); break;
         case ' ':
         case '\r':
         case '\t':
