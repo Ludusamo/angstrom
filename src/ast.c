@@ -336,12 +336,12 @@ Ast *parse_primary(Parser *parser) {
             expr->type = KEYVAL;
             append_list(&expr->nodes, from_ptr(parse_expression(parser)));
 
-            // Single element record
-            if (peek_token(parser, -3)->type == LPAREN) {
-                Ast *lit = create_ast(LITERAL, peek_token(parser, -2));
-                append_list(&lit->nodes, from_ptr(expr));
-                return lit;
-            }
+            // TODO: Single element record
+            //if (peek_token(parser, -3)->type == LPAREN) {
+            //    Ast *lit = create_ast(LITERAL, peek_token(parser, -2));
+            //    append_list(&lit->nodes, from_ptr(expr));
+            //    return lit;
+            //}
             return expr;
         }
         expr = parse_accessor(parser, expr);
