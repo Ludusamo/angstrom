@@ -454,6 +454,32 @@ static char *construct_sum_type_name(const List *types) {
     return type_name;
 }
 
+static Ang_Type *get_sum_type(Compiler *c, const List *types) {
+    char *sum_type_name = construct_sum_type_name(types);
+    Ang_Type *sum_type = find_type(c, sum_type_name);
+    if (!sum_type) {
+        sum_type = calloc(1, sizeof(Ang_Type));
+        ctor_ang_type(sum_type,
+                num_types(c),
+                sum_type_name,
+                SUM,
+                ((Ang_Type *) get_ptr(access_list(types, 0)))->default_value);
+        sum_type->slots = calloc(1, sizeof(Hashtable));
+        sum_type->slot_types = calloc(1, sizeof(List));
+        ctor_hashtable(sum_type->slots);
+        ctor_list(sum_type->slot_types);
+        for (size_t i = 0; i < types->length; i++) {
+            Ang_Type *type = get_ptr(access_list(types, i));
+            set_hashtable(sum_type->slots, type->name, from_double(i));
+            append_list(sum_type->slot_types, from_ptr(type));
+        }
+        add_type(&c->env, sum_type);
+    } else {
+        free(sum_type_name);
+    }
+    return sum_type;
+}
+
 Ang_Type *compile_type(Compiler *c, Ast *code) {
     if (code->type == KEYVAL) return compile_type(c, get_child(code, 0));
     const char *type_sym = code->assoc_token->lexeme;
@@ -504,23 +530,7 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
             buf = get_child(buf, 1);
         } while (buf->type == SUM_TYPE);
         append_list(&types, from_ptr(compile_type(c, get_child(code, 1))));
-        char *sum_type_name = construct_sum_type_name(&types);
-        Ang_Type *sum_type = calloc(1, sizeof(Ang_Type));
-        ctor_ang_type(sum_type,
-                num_types(c),
-                sum_type_name,
-                SUM,
-                get_child(code, 0)->eval_type->default_value);
-        sum_type->slots = calloc(1, sizeof(Hashtable));
-        sum_type->slot_types = calloc(1, sizeof(List));
-        ctor_hashtable(sum_type->slots);
-        ctor_list(sum_type->slot_types);
-        for (size_t i = 0; i < types.length; i++) {
-            Ang_Type *type = get_ptr(access_list(&types, i));
-            set_hashtable(sum_type->slots, type->name, from_double(i));
-            append_list(sum_type->slot_types, from_ptr(type));
-        }
-        set_hashtable(&c->env.types, sum_type->name, from_ptr(sum_type));
+        Ang_Type *sum_type = get_sum_type(c, &types);
         dtor_list(&types);
         code->eval_type = sum_type;
         return sum_type;
@@ -605,11 +615,19 @@ void compile_block(Compiler *c, Ast *code) {
 
     append_list(&c->instr, from_double(SET_FP));
 
+    List return_types;
+    ctor_list(&return_types);
+
     // Compile all block expressions
     for (size_t i = 0; i < code->nodes.length; i++) {
-        compile(&block, get_child(code, i));
+        Ast *child = get_child(code, i);
+        compile(&block, child);
         if (i + 1 != code->nodes.length)
             append_list(&block.instr, from_double(POP));
+
+        // Is return or last statement
+        if (code->type == RET_EXPR || i + 1 == code->nodes.length)
+            append_list(&return_types, from_ptr((void *) child->eval_type));
     }
 
     // Set all return jump locations to here
@@ -634,7 +652,13 @@ void compile_block(Compiler *c, Ast *code) {
     append_list(&c->instr, from_double(RESET_FP));
 
     // Return type of block
-    code->eval_type = get_child(code, code->nodes.length - 1)->eval_type;
+    if (return_types.length > 1) {
+        code->eval_type = get_sum_type(c, &return_types);
+    } else {
+        code->eval_type = get_child(code, code->nodes.length - 1)->eval_type;
+    }
+    dtor_list(&return_types);
+
     *c->enc_err = *block.enc_err;
     dtor_compiler(&block);
 }

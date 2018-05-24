@@ -17,7 +17,7 @@ void dtor_ang_type(Ang_Type *type) {
 }
 
 Ang_Type *copy_ang_type(const Ang_Type *src, Ang_Type *dest) {
-    ctor_ang_type(dest, src->id, src->name, src->default_value);
+    ctor_ang_type(dest, src->id, src->name, src->cat, src->default_value);
 
     dest->slots = calloc(1, sizeof(Hashtable));
     ctor_hashtable(dest->slots);
