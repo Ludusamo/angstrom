@@ -21,24 +21,29 @@ void dtor_ang_env(Ang_Env *env) {
     foreach (type_iter) {
         Ang_Type *t =
             get_ptr(((Keyval*) (get_ptr(val_iter_hashtable(&type_iter))))->val);
-        if (t->name[0] == '(') {
+        if (!t->user_defined && (t->cat == PRODUCT || t->cat == SUM)) {
             free((void*) t->name);
-            List *default_tuple = get_ptr(t->default_value);
-            dtor_list(default_tuple);
-            free(default_tuple);
-            default_tuple = 0;
 
-            /* You only need to free slots and slot_types for tuples
-             * because any aliased ones will just hold references to these
-             * base tuple objects.
-             */
-            Iter slot_iter;
-            iter_hashtable(&slot_iter, t->slots);
-            foreach(slot_iter) {
-                const char *slot = ((Keyval *) get_ptr(val_iter_hashtable(&slot_iter)))->key;
-                free((void *)slot);
+            if (t->cat == PRODUCT) {
+                List *default_tuple = get_ptr(t->default_value);
+                dtor_list(default_tuple);
+                free(default_tuple);
+                default_tuple = 0;
+
+                /* You only need to free slots and slot_types for tuples/sums
+                 * because any aliased ones will just hold references to these
+                 * base tuple/sum objects.
+                 */
+                Iter slot_iter;
+                iter_hashtable(&slot_iter, t->slots);
+                foreach(slot_iter) {
+                    const char *slot = ((Keyval *) get_ptr(val_iter_hashtable(&slot_iter)))->key;
+                    free((void *)slot);
+                }
+                destroy_iter_hashtable(&slot_iter);
             }
-            destroy_iter_hashtable(&slot_iter);
+
+            
             dtor_hashtable(t->slots);
             dtor_list(t->slot_types);
             free(t->slots);
@@ -47,8 +52,7 @@ void dtor_ang_env(Ang_Env *env) {
             // Destroy the tuple type
             dtor_ang_type(t);
             free(t);
-        } else if (strcmp(t->name, "Und") && strcmp(t->name, "Num") 
-                && strcmp(t->name, "Bool") && strcmp(t->name, "String")) {
+        } else if (t->user_defined) {
             free(t);
         }
         t = 0;

@@ -259,18 +259,21 @@ void compile_type_decl(Compiler *c, Ast *code) {
 
     // Register the new type
     Ang_Type *new_type = calloc(1, sizeof(Ang_Type));
-    ctor_ang_type(new_type, type->id, type_name, type->default_value);
+    ctor_ang_type(new_type, type->id, type_name, type->cat, type->default_value);
+    new_type->user_defined = 1;
     new_type->slots = type->slots;
     new_type->slot_types = type->slot_types;
     add_type(&c->env, new_type);
 }
 
 void compile_decl(Compiler *c, Ast *code) {
-    const Ang_Type *type = find_type(c, "und");
+    const Ang_Type *type = find_type(c, "Und");
     int has_assignment = 0;
     for (size_t i = 0; i < code->nodes.length; i++) {
         Ast *child = get_child(code, i);
-        if (child->type == TYPE) {
+        if (child->type == TYPE ||
+                child->type == SUM_TYPE ||
+                child->type == PRODUCT_TYPE) {
             type = compile_type(c, child);
             if (!type) return;
         } else {
@@ -295,6 +298,7 @@ void compile_decl(Compiler *c, Ast *code) {
     const char *sym = code->assoc_token->lexeme;
     if (symbol_exists(&c->env, sym)) {
         error(code->assoc_token->line, NAME_COLLISION, sym);
+        fprintf(stderr, "\n");
         *c->enc_err = 1;
         return;
     }
@@ -324,11 +328,13 @@ void compile_return(Compiler *c, Ast *code) {
 }
 
 void compile_destr_decl(Compiler *c, Ast *code) {
-    const Ang_Type *tuple_type = find_type(c, "und");
+    const Ang_Type *tuple_type = find_type(c, "Und");
     int has_assignment = 0;
     for (size_t i = 1; i < code->nodes.length; i++) {
         Ast *child = get_child(code, i);
-        if (child->type == TYPE) {
+        if (child->type == TYPE ||
+                child->type == SUM_TYPE ||
+                child->type == PRODUCT_TYPE) {
             tuple_type = compile_type(c, child);
             if (!tuple_type) return;
         } else {
@@ -431,10 +437,27 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
     }
 }
 
+static char *construct_sum_type_name(const List *types) {
+    // TYPE|TYPE...|TYPE
+    size_t name_size = types->length;
+    for (size_t i = 0; i < types->length; i++) {
+        name_size += strlen(((Ang_Type *) get_ptr(access_list(types, i)))->name);
+    }
+    char *type_name = calloc(name_size, sizeof(char));
+    for (size_t i = 0; i < types->length - 1; i++) {
+        strcat(type_name, ((Ang_Type *) get_ptr(access_list(types, i)))->name);
+        strcat(type_name, "|");
+    }
+    int last = types->length - 1;
+    strcat(type_name, ((Ang_Type *) get_ptr(access_list(types, last)))->name);
+    type_name[name_size - 1] = '\0';
+    return type_name;
+}
+
 Ang_Type *compile_type(Compiler *c, Ast *code) {
     if (code->type == KEYVAL) return compile_type(c, get_child(code, 0));
     const char *type_sym = code->assoc_token->lexeme;
-    if (type_sym[0] == '(') {
+    if (code->type == PRODUCT_TYPE) {
         int is_record = get_child(code, 0)->type == KEYVAL;
         List types;
         ctor_list(&types);
@@ -470,15 +493,46 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
             }
         }
         dtor_list(&slots);
+        code->eval_type = tuple_type;
         return tuple_type;
+    } else if (code->type == SUM_TYPE) {
+        List types;
+        ctor_list(&types);
+        Ast *buf = code;
+        do {
+            append_list(&types, from_ptr(compile_type(c, get_child(code, 0))));
+            buf = get_child(buf, 1);
+        } while (buf->type == SUM_TYPE);
+        append_list(&types, from_ptr(compile_type(c, get_child(code, 1))));
+        char *sum_type_name = construct_sum_type_name(&types);
+        Ang_Type *sum_type = calloc(1, sizeof(Ang_Type));
+        ctor_ang_type(sum_type,
+                num_types(c),
+                sum_type_name,
+                SUM,
+                get_child(code, 0)->eval_type->default_value);
+        sum_type->slots = calloc(1, sizeof(Hashtable));
+        sum_type->slot_types = calloc(1, sizeof(List));
+        ctor_hashtable(sum_type->slots);
+        ctor_list(sum_type->slot_types);
+        for (size_t i = 0; i < types.length; i++) {
+            Ang_Type *type = get_ptr(access_list(&types, i));
+            set_hashtable(sum_type->slots, type->name, from_double(i));
+            append_list(sum_type->slot_types, from_ptr(type));
+        }
+        set_hashtable(&c->env.types, sum_type->name, from_ptr(sum_type));
+        dtor_list(&types);
+        code->eval_type = sum_type;
+        return sum_type;
     }
     Ang_Type *type = find_type(c, type_sym);
     if (!type) {
         error(code->assoc_token->line, UNKNOWN_TYPE, type_sym);
         fprintf(stderr, "\n");
         *c->enc_err = 1;
-        return find_type(c, "und");
+        return find_type(c, "Und");
     }
+    code->eval_type = type;
     return type;
 }
 
@@ -515,7 +569,7 @@ Ang_Type *construct_tuple(const List *slots, const List *types, int id, char *tu
         append_list(default_tuple, child_type->default_value);
     }
     Ang_Type *t = calloc(1, sizeof(Ang_Type));
-    ctor_ang_type(t, id, tuple_name, from_ptr(default_tuple));
+    ctor_ang_type(t, id, tuple_name, PRODUCT, from_ptr(default_tuple));
     t->slots = calloc(1, sizeof(Hashtable));
     ctor_hashtable(t->slots);
     t->slot_types = calloc(1, sizeof(List));
@@ -586,11 +640,11 @@ void compile_block(Compiler *c, Ast *code) {
 }
 
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
-    if (t->id == NUM_TYPE) {
+    if (t->cat == PRIMITIVE) {
         // Base case for Num type
         append_list(&c->instr, from_double(PUSH));
         append_list(&c->instr, default_value);
-    } else {
+    } else if (t->cat == PRODUCT) {
         // Construct default value
         const List *def_val = get_ptr(default_value);
         for (int i = t->slot_types->length - 1; i >= 0; i--) {
@@ -603,6 +657,8 @@ void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
         append_list(&c->instr, type_val);
         // Push the number of slots
         append_list(&c->instr, from_double(t->slot_types->length));
+    } else if (t->cat == SUM) {
+        push_default_value(c, get_ptr(access_list(t->slot_types, 0)), default_value);
     }
 }
 
