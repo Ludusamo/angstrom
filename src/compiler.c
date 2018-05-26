@@ -354,6 +354,20 @@ void compile_destr_decl(Compiler *c, Ast *code) {
     }
     code->eval_type = tuple_type;
 
+    if (tuple_type->cat == PRIMITIVE) {
+        error(code->assoc_token->line,
+            INVALID_DESTR,
+            "Cannot destructure a primitive type.\n");
+        *c->enc_err = 1;
+        return;
+    } else if (tuple_type->cat == SUM) {
+        error(code->assoc_token->line,
+            INVALID_DESTR,
+            "Cannot destructure a sum type.\n");
+        *c->enc_err = 1;
+        return;
+    }
+
     compile_destr_decl_helper(c, has_assignment, get_child(code, 0), tuple_type);
 
     if (has_assignment) {
@@ -473,7 +487,7 @@ static Ang_Type *get_sum_type(Compiler *c, const List *types) {
             set_hashtable(sum_type->slots, type->name, from_double(i));
             append_list(sum_type->slot_types, from_ptr(type));
         }
-        add_type(&c->env, sum_type);
+        add_type(&get_root_compiler(c)->env, sum_type);
     } else {
         free(sum_type_name);
     }
@@ -626,8 +640,9 @@ void compile_block(Compiler *c, Ast *code) {
             append_list(&block.instr, from_double(POP));
 
         // Is return or last statement
-        if (code->type == RET_EXPR || i + 1 == code->nodes.length)
+        if (child->type == RET_EXPR || i + 1 == code->nodes.length) {
             append_list(&return_types, from_ptr((void *) child->eval_type));
+        }
     }
 
     // Set all return jump locations to here

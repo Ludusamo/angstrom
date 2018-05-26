@@ -12,6 +12,7 @@
     code(UNKNOWN_TYPE) \
     code(TYPE_ERROR) \
     code(INSUFFICIENT_TUPLE) \
+    code(INVALID_DESTR) \
     code(INVALID_SLOT) \
     code(UNCLOSED_BLOCK) \
     code(UNCLOSED_TUPLE) \
