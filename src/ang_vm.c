@@ -161,6 +161,9 @@ void eval(Ang_VM *vm) {
         vm->mem.registers[reg2] = vm->mem.registers[reg1];
         break;
     }
+    case JMP:
+        vm->mem.ip = get_next_op(vm).as_int32;
+        break;
     case CALL: {
         int ip = get_next_op(vm).as_int32;
         int num_args = get_next_op(vm).as_int32;

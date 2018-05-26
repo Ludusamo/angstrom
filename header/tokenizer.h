@@ -29,6 +29,7 @@
     code(GTE) \
     code(LT) \
     code(LTE) \
+    code(PIPE) \
     code(IDENT) \
     code(STR) \
     code(NUM) \

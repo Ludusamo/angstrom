@@ -156,6 +156,7 @@ int tokenize(List *tokens, const char *src, const char *src_name) {
         case '>':
             add_token(tokens, &scan, match(&scan, '=') ? GTE : GT, nil_val);
             break;
+        case '|': add_token(tokens, &scan, PIPE, nil_val); break;
         case ' ':
         case '\r':
         case '\t':
@@ -174,7 +175,8 @@ int tokenize(List *tokens, const char *src, const char *src_name) {
         }
         default:
             if (isdigit(c)) {
-                Value val = last_scanned_token(tokens)->type == DOT
+                const Token *last = last_scanned_token(tokens);
+                Value val = last && last->type == DOT
                     ? integer(&scan)
                     : number(&scan);
                 add_token(tokens, &scan, NUM, val);

@@ -12,10 +12,13 @@
     code(UNKNOWN_TYPE) \
     code(TYPE_ERROR) \
     code(INSUFFICIENT_TUPLE) \
+    code(INVALID_DESTR) \
     code(INVALID_SLOT) \
     code(UNCLOSED_BLOCK) \
     code(UNCLOSED_TUPLE) \
     code(INCOMPLETE_RECORD) \
+    code(UNKNOWN_AST) \
+    code(NON_BLOCK_RETURN) \
 
 #define DEFINE_ENUM_CODE(type) type,
 typedef enum {

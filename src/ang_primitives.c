@@ -4,12 +4,13 @@
 #include "list.h"
 
 void ctor_primitive_types(Primitive_Types *defaults) {
-    ctor_ang_type(&defaults->und_default, UNDECLARED, "Und", nil_val);
-    ctor_ang_type(&defaults->num_default, NUM_TYPE, "Num", from_double(0));
-    ctor_ang_type(&defaults->bool_default, BOOL_TYPE, "Bool", false_val);
+    ctor_ang_type(&defaults->und_default, UNDECLARED, "Und", PRIMITIVE, nil_val);
+    ctor_ang_type(&defaults->num_default, NUM_TYPE, "Num", PRIMITIVE, from_double(0));
+    ctor_ang_type(&defaults->bool_default, BOOL_TYPE, "Bool", PRIMITIVE, false_val);
     ctor_ang_type(&defaults->string_default,
         STRING_TYPE,
         "String",
+        PRIMITIVE,
         from_ptr(calloc(0, sizeof(char))));
 }
 

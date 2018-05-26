@@ -16,6 +16,7 @@ struct Compiler{
     Ang_Env env;
 
     Compiler *parent;
+    List jmp_locs;
 };
 
 void ctor_compiler(Compiler *compiler);
@@ -33,7 +34,7 @@ void compile_keyval(Compiler *c, Ast *code);
 void compile_accessor(Compiler *c, Ast *code);
 void compile_type_decl(Compiler *c, Ast *code);
 void compile_decl(Compiler *c, Ast *code);
-void compile_var_decl(Compiler *c, Ast *code);
+void compile_return(Compiler *c, Ast *code);
 void compile_destr_decl(Compiler *c, Ast *code);
 void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const Ang_Type *ttype);
 
@@ -50,5 +51,6 @@ const Symbol *find_symbol(const Compiler *c, const char *sym);
 Ang_Type *find_type(const Compiler *c, const char *sym);
 size_t num_local(const Compiler *c);
 size_t num_types(const Compiler *c);
+Compiler *get_root_compiler(Compiler *c);
 
 #endif // COMPILER_H

@@ -22,4 +22,6 @@ int symbol_exists(const Ang_Env *env, const char *sym);
 void create_symbol(Ang_Env *env, const char *sym, const Ang_Type *type, int loc, int global);
 void destroy_symbol(Ang_Env *env, const char *sym);
 
+void add_type(Ang_Env *env, const Ang_Type *type);
+
 #endif // ANG_ENV_H

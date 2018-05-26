@@ -3,16 +3,29 @@
 
 #include "hashtable.h"
 
+typedef enum {
+    PRIMITIVE,
+    SUM,
+    PRODUCT
+} Type_Category;
+
 typedef struct {
     int id;
     const char *name;
+    Type_Category cat;
     Value default_value;
     Hashtable *slots;
     List *slot_types;
+    int user_defined;
 } Ang_Type;
 
-void ctor_ang_type(Ang_Type *type, int id, const char *name, Value default_val);
+void ctor_ang_type(Ang_Type *type,
+        int id,
+        const char *name,
+        Type_Category cat,
+        Value default_val);
 void dtor_ang_type(Ang_Type *type);
+Ang_Type *copy_ang_type(const Ang_Type *src, Ang_Type *dest);
 
 // Checks to see if t2 is the same type as t1
 int type_equality(const Ang_Type *t1, const Ang_Type *t2);
