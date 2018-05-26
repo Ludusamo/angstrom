@@ -30,6 +30,7 @@
     code(LT) \
     code(LTE) \
     code(PIPE) \
+    code(ARROW) \
     code(IDENT) \
     code(STR) \
     code(NUM) \

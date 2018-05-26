@@ -148,7 +148,13 @@ int tokenize(List *tokens, const char *src, const char *src_name) {
             add_token(tokens, &scan, match(&scan, '=') ? NEQ : NOT, nil_val);
             break;
         case '=':
-            add_token(tokens, &scan, match(&scan, '=') ? EQ_EQ : EQ, nil_val);
+            if (match(&scan, '=')) {
+                add_token(tokens, &scan, EQ_EQ, nil_val);
+            } else if (match(&scan, '>')) {
+                add_token(tokens, &scan, ARROW, nil_val);
+            } else {
+                add_token(tokens, &scan, EQ, nil_val);
+            }
             break;
         case '<':
             add_token(tokens, &scan, match(&scan, '=') ? LTE : LT, nil_val);
