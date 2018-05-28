@@ -264,7 +264,9 @@ Ast *parse_type(Parser *parser) {
                     UNCLOSED_TUPLE,
                     "Tuple type missing closing ')'\n");
                 *parser->enc_err = 1;
-                return expr;
+                synchronize(parser);
+                destroy_ast(expr);
+                return 0;
             }
         }
         consume_token(parser, RPAREN, "Panic...");
@@ -273,6 +275,8 @@ Ast *parse_type(Parser *parser) {
         error(lineno, UNEXPECTED_TOKEN, "Expected type identifier.\n");
         *parser->enc_err = 1;
         synchronize(parser);
+        destroy_ast(expr);
+        return 0;
     }
 
     // Sum Type
@@ -285,6 +289,7 @@ Ast *parse_type(Parser *parser) {
     return expr;
 }
 
+
 Ast *parse_block(Parser *parser) {
     if (match_token(parser, LBRACE)) {
         Ast *expr = create_ast(BLOCK, previous_token(parser));
@@ -294,7 +299,9 @@ Ast *parse_block(Parser *parser) {
                     UNCLOSED_BLOCK,
                     "Block missing closing '}'\n");
                 *parser->enc_err = 1;
-                return expr;
+                synchronize(parser);
+                destroy_ast(expr);
+                return 0;
             } else {
                 append_list(&expr->nodes, from_ptr(parse_expression(parser)));
             }
@@ -312,7 +319,30 @@ Ast *parse_return(Parser *parser) {
         append_list(&expr->nodes, from_ptr(parse_expression(parser)));
         return expr;
     }
-    return parse_primary(parser);
+    return parse_lambda(parser);
+}
+
+Ast *parse_lambda(Parser *parser) {
+    Ast *type = parse_primary(parser);
+    if (match_token(parser, ARROW)) {
+        Ast *lambda = create_ast(LAMBDA, previous_token(parser));
+
+        // Place everything into its own block
+        Ast *block = create_ast(BLOCK, previous_token(parser));
+        append_list(&lambda->nodes, from_ptr(block));
+
+        if (type->nodes.length > 0) { // is tuple
+            append_list(&block->nodes,
+                 from_ptr(create_ast(DESTR_DECL, previous_token(parser))));
+            append_list(&get_child(block, 0)->nodes, from_ptr(type));
+        } else {
+            type->type = VAR_DECL;
+            append_list(&block->nodes, from_ptr(type));
+        }
+        append_list(&block->nodes, from_ptr(parse_expression(parser)));
+        type = lambda;
+    }
+    return type;
 }
 
 Ast *parse_primary(Parser *parser) {

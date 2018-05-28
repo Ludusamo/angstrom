@@ -19,6 +19,7 @@
     code(INCOMPLETE_RECORD) \
     code(UNKNOWN_AST) \
     code(NON_BLOCK_RETURN) \
+    code(FLOATING_TYPE) \
 
 #define DEFINE_ENUM_CODE(type) type,
 typedef enum {
