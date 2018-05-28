@@ -105,7 +105,7 @@ Value number(Scanner *scanner) {
 void populate_keywords(Hashtable *keywords) {
     ctor_hashtable(keywords);
     set_hashtable(keywords, "var", from_double(VAR));
-    set_hashtable(keywords, "func", from_double(FUNC));
+    set_hashtable(keywords, "fn", from_double(FN));
     set_hashtable(keywords, "_", from_double(UNDERSCORE));
     set_hashtable(keywords, "type", from_double(TYPE_KEYWORD));
     set_hashtable(keywords, "return", from_double(RETURN));

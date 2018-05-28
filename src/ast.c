@@ -84,7 +84,7 @@ void synchronize(Parser *parser) {
     while (!at_end(parser)) {
         switch(peek_token(parser, 1)->type) {
         case VAR:
-        case FUNC:
+        case FN:
         case RBRACE:
             return;
         default:
