@@ -5,7 +5,7 @@
 
 void mark_ang_obj(Ang_Obj *obj) {
     obj->marked = 1;
-    if (obj->type->id >= PRIMITIVE_COUNT) { // Is a product type
+    if (obj->type->cat == PRODUCT) {
         List *slots = get_ptr(obj->v);
         for (size_t i = 0; i < slots->length; i++) {
             mark_ang_obj(get_ptr(access_list(slots, i)));

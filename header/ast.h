@@ -26,7 +26,7 @@
     code(RET_EXPR) \
     code(KEYVAL) \
     code(PLACEHOLD) \
-    code(LAMBDA)
+    code(LAMBDA_LIT)
 
 #define DEFINE_ENUM_TYPE(type) type,
 typedef enum {

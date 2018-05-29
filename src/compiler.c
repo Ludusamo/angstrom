@@ -79,9 +79,12 @@ void compile(Compiler *c, Ast *code) {
     case BLOCK:
         compile_block(c, code);
         break;
-    //case LAMBDA:
-    //    compile_lambda(c, code);
-    //    break;
+    case LAMBDA_LIT:
+        compile_lambda(c, code);
+        break;
+    case PLACEHOLD:
+        compile_placeholder(c, code);
+        break;
     case RET_EXPR:
         compile_return(c, code);
         break;
@@ -500,6 +503,48 @@ static Ang_Type *get_sum_type(Compiler *c, const List *types) {
     return sum_type;
 }
 
+static char *construct_lambda_type_name(
+        Compiler *c,
+        const Ang_Type *lhs,
+        const Ang_Type *rhs) {
+    // TYPE=>TYPE
+    const char *lhs_name = lhs->name;
+    const char *rhs_name = rhs->name;
+    size_t name_size = 3 + strlen(lhs_name) + strlen(rhs_name);
+    char *type_name = calloc(name_size, sizeof(char));
+    strcat(type_name, lhs_name);
+    strcat(type_name, "=>");
+    strcat(type_name, rhs_name);
+    type_name[name_size - 1] = '\0';
+    return type_name;
+}
+
+static Ang_Type *get_lambda_type(
+        Compiler *c,
+        const Ang_Type *lhs,
+        const Ang_Type *rhs) {
+    char *lambda_name = construct_lambda_type_name(c, lhs, rhs);
+    Ang_Type *lambda_type = find_type(c, lambda_name);
+    if (!lambda_type) {
+        lambda_type = calloc(1, sizeof(Ang_Type));
+        ctor_ang_type(lambda_type, num_types(c), lambda_name, LAMBDA, nil_val);
+        lambda_type->slots = calloc(1, sizeof(Hashtable));
+        lambda_type->slot_types = calloc(1, sizeof(List));
+        ctor_hashtable(lambda_type->slots);
+        ctor_list(lambda_type->slot_types);
+
+        set_hashtable(lambda_type->slots, lhs->name, from_double(0));
+        append_list(lambda_type->slot_types, from_ptr((void *) lhs));
+        set_hashtable(lambda_type->slots, rhs->name, from_double(1));
+        append_list(lambda_type->slot_types, from_ptr((void *) rhs));
+
+        add_type(&get_root_compiler(c)->env, lambda_type);
+    } else {
+        free(lambda_name);
+    }
+    return lambda_type;
+}
+
 Ang_Type *compile_type(Compiler *c, Ast *code) {
     if (code->type == KEYVAL) return compile_type(c, get_child(code, 0));
     const char *type_sym = code->assoc_token->lexeme;
@@ -685,7 +730,25 @@ void compile_block(Compiler *c, Ast *code) {
 }
 
 void compile_lambda(Compiler *c, Ast *code) {
-    //compile_destr_decl_helper(c, 1, Ast *lhs, const Ang_Type *ttype);
+    append_list(&c->instr, from_double(JMP));
+    append_list(&c->instr, nil_val);
+    int jmp_loc = c->instr.length - 1;
+    Ast *block = get_child(code, 0);
+    compile_block(c, block);
+    const Ang_Type *lhs_type = get_child(block, 0)->eval_type;
+    const Ang_Type *rhs_type = block->eval_type;
+    code->eval_type = get_lambda_type(c, lhs_type, rhs_type);
+    append_list(&c->instr, from_double(RET));
+
+    set_list(&c->instr, jmp_loc, from_double(c->instr.length));
+
+    append_list(&c->instr, from_double(PUSOBJ));
+    append_list(&c->instr, from_ptr((void *) code->eval_type));
+    append_list(&c->instr, from_double(c->instr.length + 2));
+}
+
+void compile_placeholder(Compiler *c, Ast *code) {
+    code->eval_type = compile_type(c, get_child(code, 0));
 }
 
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {

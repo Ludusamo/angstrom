@@ -52,7 +52,8 @@ void mark_all_objects(Memory *mem) {
 void sweep_mem(Memory *mem) {
     Ang_Obj **obj = &mem->mem_head;
     while (*obj) {
-        if ((*obj)->type->id >= PRIMITIVE_COUNT) { // Is a user defined type
+        if ((*obj)->type->cat != PRIMITIVE &&
+                (*obj)->type->cat != LAMBDA) { // Is a user defined type
             List *tuple_val = get_ptr((*obj)->v);
             dtor_list(tuple_val);
             free(tuple_val);

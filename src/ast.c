@@ -347,7 +347,7 @@ static Ast *record_type_to_destr(Parser *parser, Ast *type) {
 
 Ast *parse_lambda(Parser *parser) {
     if (match_token(parser, FN)) {
-        Ast *lambda = create_ast(LAMBDA, previous_token(parser));
+        Ast *lambda = create_ast(LAMBDA_LIT, previous_token(parser));
 
         // Place everything into its own block
         Ast *block = create_ast(BLOCK, previous_token(parser));
