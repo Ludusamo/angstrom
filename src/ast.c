@@ -322,27 +322,78 @@ Ast *parse_return(Parser *parser) {
     return parse_lambda(parser);
 }
 
+static Ast *record_type_to_destr(Parser *parser, Ast *type) {
+    Ast *lit = create_ast(LITERAL, 0);
+    for (size_t i = 0; i < type->nodes.length; i++) {
+        Ast *child = get_child(type, i);
+        if (get_child(child, 0)->type == PRODUCT_TYPE) {
+            append_list(&lit->nodes,
+                from_ptr(record_type_to_destr(parser, get_child(child, 0))));
+        } else if (get_child(child, 0)->type == TYPE) {
+            append_list(&lit->nodes,
+                from_ptr(create_ast(VARIABLE, child->assoc_token)));
+        } else {
+            error(peek_token(parser, 1)->line,
+                TYPE_ERROR,
+                "Must supply product type to lambda.\n");
+            *parser->enc_err = 1;
+            synchronize(parser);
+            destroy_ast(lit);
+            return 0;
+        }
+    }
+    return lit;
+}
+
 Ast *parse_lambda(Parser *parser) {
-    Ast *type = parse_primary(parser);
-    if (match_token(parser, ARROW)) {
+    if (match_token(parser, FN)) {
         Ast *lambda = create_ast(LAMBDA, previous_token(parser));
 
         // Place everything into its own block
         Ast *block = create_ast(BLOCK, previous_token(parser));
         append_list(&lambda->nodes, from_ptr(block));
 
-        if (type->nodes.length > 0) { // is tuple
-            append_list(&block->nodes,
-                 from_ptr(create_ast(DESTR_DECL, previous_token(parser))));
-            append_list(&get_child(block, 0)->nodes, from_ptr(type));
+        Ast *type = parse_type(parser);
+        if (type->nodes.length == 0 || type->type == PRODUCT_TYPE) {
+            if (type->nodes.length == 0) {
+                destroy_ast(type);
+            } else if (type->nodes.length == 1) {
+                // Variable declaration
+                const Token *var_name = get_child(type, 0)->assoc_token;
+                append_list(&block->nodes,
+                    from_ptr(create_ast(VAR_DECL, var_name)));
+            } else {
+                Ast *destr = create_ast(DESTR_DECL, 0);
+                append_list(&block->nodes, from_ptr(destr));
+                append_list(&destr->nodes,
+                    from_ptr(record_type_to_destr(parser, type)));
+            }
+            Ast *placehold = create_ast(PLACEHOLD, 0);
+            append_list(&placehold->nodes, from_ptr(type));
+            append_list(&get_child(block, 0)->nodes, from_ptr(placehold));
         } else {
-            type->type = VAR_DECL;
-            append_list(&block->nodes, from_ptr(type));
+            error(peek_token(parser, 1)->line,
+                TYPE_ERROR,
+                "Must supply product type to lambda.\n");
+            *parser->enc_err = 1;
+            synchronize(parser);
+            destroy_ast(lambda);
+            return 0;
         }
-        append_list(&block->nodes, from_ptr(parse_expression(parser)));
-        type = lambda;
+        if (match_token(parser, ARROW)) {
+            append_list(&block->nodes, from_ptr(parse_expression(parser)));
+        } else {
+            error(peek_token(parser, 1)->line,
+                UNEXPECTED_TOKEN,
+                "Lambda expected '=>' token.\n");
+            *parser->enc_err = 1;
+            synchronize(parser);
+            destroy_ast(lambda);
+            return 0;
+        }
+        return lambda;
     }
-    return type;
+    return parse_primary(parser);
 }
 
 Ast *parse_primary(Parser *parser) {

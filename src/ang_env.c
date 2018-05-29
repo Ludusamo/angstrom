@@ -43,7 +43,6 @@ void dtor_ang_env(Ang_Env *env) {
                 destroy_iter_hashtable(&slot_iter);
             }
 
-            
             dtor_hashtable(t->slots);
             dtor_list(t->slot_types);
             free(t->slots);

@@ -79,6 +79,9 @@ void compile(Compiler *c, Ast *code) {
     case BLOCK:
         compile_block(c, code);
         break;
+    //case LAMBDA:
+    //    compile_lambda(c, code);
+    //    break;
     case RET_EXPR:
         compile_return(c, code);
         break;
@@ -110,8 +113,11 @@ void compile_unary_op(Compiler *c, Ast *code) {
 }
 
 void compile_binary_op(Compiler *c, Ast *code) {
-    compile(c, get_child(code, 0));
-    compile(c, get_child(code, 1));
+    Ast *lhs = get_child(code, 0);
+    Ast *rhs = get_child(code, 0);
+
+    compile(c, lhs);
+    compile(c, rhs);
 
     code->eval_type = find_type(c, "Num");
     if (get_child(code, 0)->eval_type->id != NUM_TYPE ||
@@ -225,7 +231,7 @@ void compile_accessor(Compiler *c, Ast *code) {
     Value slot_num_val = nil_val;
     if (type->slots) slot_num_val = access_hashtable(type->slots, slot_name);
     if (slot_num_val.bits == nil_val.bits) {
-        char error_msg[255];
+        char error_msg[32 + strlen(type->name) + strlen(slot_name)];
         sprintf(error_msg, "Type <%s> does not have the slot %s.\n", type->name, slot_name);
         error(code->assoc_token->line, INVALID_SLOT, error_msg);
         *c->enc_err = 1;
@@ -676,6 +682,10 @@ void compile_block(Compiler *c, Ast *code) {
 
     *c->enc_err = *block.enc_err;
     dtor_compiler(&block);
+}
+
+void compile_lambda(Compiler *c, Ast *code) {
+    //compile_destr_decl_helper(c, 1, Ast *lhs, const Ang_Type *ttype);
 }
 
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
