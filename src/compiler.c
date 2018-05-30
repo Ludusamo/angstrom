@@ -117,14 +117,13 @@ void compile_unary_op(Compiler *c, Ast *code) {
 
 void compile_binary_op(Compiler *c, Ast *code) {
     Ast *lhs = get_child(code, 0);
-    Ast *rhs = get_child(code, 0);
+    Ast *rhs = get_child(code, 1);
 
     compile(c, lhs);
     compile(c, rhs);
 
     code->eval_type = find_type(c, "Num");
-    if (get_child(code, 0)->eval_type->id != NUM_TYPE ||
-            get_child(code, 1)->eval_type->id != NUM_TYPE) {
+    if (lhs->eval_type->id != NUM_TYPE || rhs->eval_type->id != NUM_TYPE) {
         error(code->assoc_token->line,
                 TYPE_ERROR,
                 "Cannot do binary operations on non-numbers.\n");
@@ -219,6 +218,7 @@ void compile_variable(Compiler *c, Ast *code) {
     }
     append_list(&c->instr, from_double(sym->global ? GLOAD : LOAD));
     append_list(&c->instr, from_double(sym->loc));
+    printf("%s type is %s\n", code->assoc_token->lexeme, sym->type->name);
     code->eval_type = sym->type;
 }
 
@@ -733,6 +733,7 @@ void compile_lambda(Compiler *c, Ast *code) {
     append_list(&c->instr, from_double(JMP));
     append_list(&c->instr, nil_val);
     int jmp_loc = c->instr.length - 1;
+
     Ast *block = get_child(code, 0);
     compile_block(c, block);
     const Ang_Type *lhs_type = get_child(block, 0)->eval_type;

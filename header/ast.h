@@ -26,7 +26,8 @@
     code(RET_EXPR) \
     code(KEYVAL) \
     code(PLACEHOLD) \
-    code(LAMBDA_LIT)
+    code(LAMBDA_LIT) \
+    code(LAMBDA_CALL)
 
 #define DEFINE_ENUM_TYPE(type) type,
 typedef enum {
@@ -72,6 +73,7 @@ Ast *parse_addition(Parser *parser);
 Ast *parse_multiplication(Parser *parser);
 Ast *parse_unary(Parser *parser);
 Ast *parse_type_decl(Parser *parser);
+Ast *parse_lambda_call(Parser *parser);
 Ast *parse_decl(Parser *parser);
 Ast *parse_destr_decl(Parser *parser);
 Ast *parse_type(Parser *parser);
