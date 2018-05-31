@@ -8,7 +8,7 @@
 #include "compiler.h"
 #include "ang_primitives.h"
 
-char *get_line(void) {
+static char *get_line(void) {
     char * line = malloc(100), * linep = line;
     size_t lenmax = 100, len = lenmax;
     int c;
@@ -38,63 +38,40 @@ char *get_line(void) {
     return linep;
 }
 
-void run(const char *exp) {
-    /*// Tokenize
-    List *tokens = tokenize(exp);
-    if (tokens == 0) {
-        printf("\n");
-        return;
-    }
-    for (size_t i = 0; i < tokens->length; i++) {
-        Token *t = get_ptr(access_list(tokens, i));
-        print_token(t);
-    }
+static char *read_file(const char *file_path) {
+    FILE *file = fopen(file_path, "r");
 
-    // Parse
-    Parser parser = (Parser) { 0, tokens, 0 };
-    Ast *ast = parse_expression(&parser);
-    if (ast) {
-        print_ast(ast, 0);
-    }
-    if (!parser.enc_err) {
+    fseek(file, 0L, SEEK_END);
+    size_t file_size = ftell(file);
+    fseek(file, 0L, SEEK_SET);
 
-        Primitive_Types defaults;
-        ctor_primitive_types(&defaults);
-        // Compile
-        Compiler c;
-        ctor_compiler(&c);
-        set_hashtable(&c.env.types, "und", from_ptr(&defaults.und_default));
-        set_hashtable(&c.env.types, "Num", from_ptr(&defaults.num_default));
-        set_hashtable(&c.env.types, "Bool", from_ptr(&defaults.bool_default));
-        set_hashtable(&c.env.types, "(", from_ptr(&defaults.tuple_default));
-        compile(&c, ast);
+    char *file_contents = malloc(file_size + 1);
+    fread(file_contents, 1, file_size, file);
+    file_contents[file_size] = 0;
 
-        if (!c.enc_err) {
-            printf("Beginning to execute\n");
-            // Execute
-            Ang_VM vm;
-            ctor_ang_vm(&vm, 100);
-            vm.trace = 1;
-            run_compiled_instructions(&vm, &c);
-
-            Ang_Obj *result = pop_stack(&vm.mem);
-            print_ang_obj(result);
-
-            dtor_ang_vm(&vm);
-        }
-        dtor_compiler(&c);
-        dtor_primitive_types(&defaults);
-    }
-
-    // Cleanup
-    destroy_ast(ast);
-    free(ast);
-    destroy_tokens(tokens);
-    dtor_list(tokens);
-    free(tokens);*/
+    fclose(file);
+    return file_contents;
 }
 
 void run_script(char *file_path) {
+    Ang_VM vm;
+    ctor_ang_vm(&vm, 100);
+    #ifdef DEBUG
+    vm.trace = 1;
+    #endif
+    Primitive_Types defaults;
+    ctor_primitive_types(&defaults);
+    set_hashtable(&vm.compiler.env.types, "Und", from_ptr(&defaults.und_default));
+    set_hashtable(&vm.compiler.env.types, "Num", from_ptr(&defaults.num_default));
+    set_hashtable(&vm.compiler.env.types, "Bool", from_ptr(&defaults.bool_default));
+    set_hashtable(&vm.compiler.env.types, "String", from_ptr(&defaults.string_default));
+
+    char *file_contents = read_file(file_path);
+    run_code(&vm, file_contents, file_path);
+    free(file_contents);
+
+    dtor_ang_vm(&vm);
+    dtor_primitive_types(&defaults);
     return;
 }
 
