@@ -742,14 +742,32 @@ void compile_lambda(Compiler *c, Ast *code) {
 
     set_list(&c->instr, jmp_loc, from_double(c->instr.length));
 
-    append_list(&c->instr, from_double(PUSOBJ));
+    append_list(&c->instr, from_double(CONS_LAMBDA));
     append_list(&c->instr, from_ptr((void *) code->eval_type));
     append_list(&c->instr, from_double(jmp_loc + 1));
 }
 
 void compile_lambda_call(Compiler *c, Ast *code) {
-    compile(c, get_child(code, 0));
-    compile(c, get_child(code, 1));
+    Ast *lambda = get_child(code, 0);
+    Ast *param = get_child(code, 1);
+
+    compile(c, lambda);
+    compile(c, param);
+    const Ang_Type *lambda_type = lambda->eval_type;
+    const Ang_Type *lhs_type = get_ptr(access_list(lambda_type->slot_types, 0));
+    if (!type_structure_equality(lhs_type, param->eval_type)) {
+        char error_msg[256 + strlen(lhs_type->name) + strlen(param->eval_type->name)];
+        sprintf(error_msg,
+            "Lambda requires parameter of type %s. Received parameter of type %s.\n",
+            lhs_type->name,
+            param->eval_type->name);
+        error(code->assoc_token->line,
+            INVALID_LAMBDA_PARAM,
+            error_msg);
+        *c->enc_err = 1;
+        return;
+    }
+    code->eval_type = get_ptr(access_list(lambda_type->slot_types, 1));
     append_list(&c->instr, from_double(CALL));
 }
 

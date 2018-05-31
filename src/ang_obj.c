@@ -1,6 +1,7 @@
 #include "ang_obj.h"
 
 #include "ang_primitives.h"
+#include "lambda.h"
 #include "stdio.h"
 
 void mark_ang_obj(Ang_Obj *obj) {
@@ -9,6 +10,11 @@ void mark_ang_obj(Ang_Obj *obj) {
         List *slots = get_ptr(obj->v);
         for (size_t i = 0; i < slots->length; i++) {
             mark_ang_obj(get_ptr(access_list(slots, i)));
+        }
+    } else if (obj->type->cat == LAMBDA) {
+        Lambda *l = get_ptr(obj->v);
+        for (int i = 0; i < l->nenv; i++) {
+            mark_ang_obj(l->env[i]);
         }
     }
 }

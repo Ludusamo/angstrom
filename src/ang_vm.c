@@ -5,6 +5,7 @@
 #include "ang_opcodes.h"
 #include "ang_primitives.h"
 #include "ang_debug.h"
+#include "lambda.h"
 
 void ctor_ang_vm(Ang_VM *vm, size_t gmem_size) {
     ctor_memory(&vm->mem, gmem_size);
@@ -127,6 +128,15 @@ void eval(Ang_VM *vm) {
         push_stack(&vm->mem, obj);
         break;
     }
+    case CONS_LAMBDA: {
+        Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
+        Lambda *l = malloc(sizeof(Lambda));
+        l->ip = get_next_op(vm).as_int32;
+        save_lambda_env(l, &vm->mem);
+        obj->v = from_ptr(l);
+        push_stack(&vm->mem, obj);
+        break;
+    }
     case SET_FP:
         vm->mem.fp = vm->mem.sp;
         break;
@@ -166,9 +176,11 @@ void eval(Ang_VM *vm) {
         break;
     case CALL: {
         vm->mem.registers[A] = pop_stack(&vm->mem);
-        int ip = pop_int(&vm->mem);
+        Lambda *l = get_ptr(pop_stack(&vm->mem)->v);
+        int ip = l->ip;
         push_num_stack(vm, vm->mem.fp);
         push_num_stack(vm, vm->mem.ip);
+        load_lambda_env(l, &vm->mem);
         vm->mem.fp = vm->mem.sp;
         vm->mem.ip = ip;
         break;

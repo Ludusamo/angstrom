@@ -2,6 +2,7 @@
 
 #include "error.h"
 #include "ang_primitives.h"
+#include "lambda.h"
 #include <stdio.h>
 
 void ctor_memory(Memory *mem, size_t gmem_size) {
@@ -58,6 +59,10 @@ void sweep_mem(Memory *mem) {
             dtor_list(tuple_val);
             free(tuple_val);
             tuple_val = 0;
+        } else if ((*obj)->type->cat == LAMBDA) {
+            Lambda *l = get_ptr((*obj)->v);
+            destroy_lambda(l);
+            free(l);
         }
         if (!(*obj)->marked) {
             Ang_Obj *unreachable = *obj;

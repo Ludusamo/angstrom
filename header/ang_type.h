@@ -31,6 +31,9 @@ Ang_Type *copy_ang_type(const Ang_Type *src, Ang_Type *dest);
 // Checks to see if t2 is the same type as t1
 int type_equality(const Ang_Type *t1, const Ang_Type *t2);
 
+// Checks to see if t2 can be destructured into t1
+int type_structure_equality(const Ang_Type *t1, const Ang_Type *t2);
+
 void add_slot(Ang_Type *type, const char *sym, const Ang_Type *slot_type);
 
 #endif // ANG_TYPE_H
