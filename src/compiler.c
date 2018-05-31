@@ -79,6 +79,15 @@ void compile(Compiler *c, Ast *code) {
     case BLOCK:
         compile_block(c, code);
         break;
+    case LAMBDA_LIT:
+        compile_lambda(c, code);
+        break;
+    case LAMBDA_CALL:
+        compile_lambda_call(c, code);
+        break;
+    case PLACEHOLD:
+        compile_placeholder(c, code);
+        break;
     case RET_EXPR:
         compile_return(c, code);
         break;
@@ -110,12 +119,14 @@ void compile_unary_op(Compiler *c, Ast *code) {
 }
 
 void compile_binary_op(Compiler *c, Ast *code) {
-    compile(c, get_child(code, 0));
-    compile(c, get_child(code, 1));
+    Ast *lhs = get_child(code, 0);
+    Ast *rhs = get_child(code, 1);
+
+    compile(c, lhs);
+    compile(c, rhs);
 
     code->eval_type = find_type(c, "Num");
-    if (get_child(code, 0)->eval_type->id != NUM_TYPE ||
-            get_child(code, 1)->eval_type->id != NUM_TYPE) {
+    if (lhs->eval_type->id != NUM_TYPE || rhs->eval_type->id != NUM_TYPE) {
         error(code->assoc_token->line,
                 TYPE_ERROR,
                 "Cannot do binary operations on non-numbers.\n");
@@ -225,7 +236,7 @@ void compile_accessor(Compiler *c, Ast *code) {
     Value slot_num_val = nil_val;
     if (type->slots) slot_num_val = access_hashtable(type->slots, slot_name);
     if (slot_num_val.bits == nil_val.bits) {
-        char error_msg[255];
+        char error_msg[32 + strlen(type->name) + strlen(slot_name)];
         sprintf(error_msg, "Type <%s> does not have the slot %s.\n", type->name, slot_name);
         error(code->assoc_token->line, INVALID_SLOT, error_msg);
         *c->enc_err = 1;
@@ -494,6 +505,48 @@ static Ang_Type *get_sum_type(Compiler *c, const List *types) {
     return sum_type;
 }
 
+static char *construct_lambda_type_name(
+        Compiler *c,
+        const Ang_Type *lhs,
+        const Ang_Type *rhs) {
+    // TYPE=>TYPE
+    const char *lhs_name = lhs->name;
+    const char *rhs_name = rhs->name;
+    size_t name_size = 3 + strlen(lhs_name) + strlen(rhs_name);
+    char *type_name = calloc(name_size, sizeof(char));
+    strcat(type_name, lhs_name);
+    strcat(type_name, "=>");
+    strcat(type_name, rhs_name);
+    type_name[name_size - 1] = '\0';
+    return type_name;
+}
+
+static Ang_Type *get_lambda_type(
+        Compiler *c,
+        const Ang_Type *lhs,
+        const Ang_Type *rhs) {
+    char *lambda_name = construct_lambda_type_name(c, lhs, rhs);
+    Ang_Type *lambda_type = find_type(c, lambda_name);
+    if (!lambda_type) {
+        lambda_type = calloc(1, sizeof(Ang_Type));
+        ctor_ang_type(lambda_type, num_types(c), lambda_name, LAMBDA, nil_val);
+        lambda_type->slots = calloc(1, sizeof(Hashtable));
+        lambda_type->slot_types = calloc(1, sizeof(List));
+        ctor_hashtable(lambda_type->slots);
+        ctor_list(lambda_type->slot_types);
+
+        set_hashtable(lambda_type->slots, lhs->name, from_double(0));
+        append_list(lambda_type->slot_types, from_ptr((void *) lhs));
+        set_hashtable(lambda_type->slots, rhs->name, from_double(1));
+        append_list(lambda_type->slot_types, from_ptr((void *) rhs));
+
+        add_type(&get_root_compiler(c)->env, lambda_type);
+    } else {
+        free(lambda_name);
+    }
+    return lambda_type;
+}
+
 Ang_Type *compile_type(Compiler *c, Ast *code) {
     if (code->type == KEYVAL) return compile_type(c, get_child(code, 0));
     const char *type_sym = code->assoc_token->lexeme;
@@ -627,8 +680,6 @@ void compile_block(Compiler *c, Ast *code) {
     block.enc_err = c->enc_err;
     block.parent = c;
 
-    append_list(&c->instr, from_double(SET_FP));
-
     List return_types;
     ctor_list(&return_types);
 
@@ -646,7 +697,7 @@ void compile_block(Compiler *c, Ast *code) {
     }
 
     // Set all return jump locations to here
-    Value jmp_loc = from_double(c->instr.length + block.instr.length);
+    Value jmp_loc = from_double(instr_count(&block));
     for (size_t i = 0; i < block.jmp_locs.length; i++) {
         int jmp_instr = access_list(&block.jmp_locs, i).as_int32;
         set_list(&block.instr, jmp_instr, jmp_loc);
@@ -664,7 +715,6 @@ void compile_block(Compiler *c, Ast *code) {
         append_list(&c->instr, from_double(block.env.symbols.size));
     }
     append_list(&c->instr, from_double(PUSRET));
-    append_list(&c->instr, from_double(RESET_FP));
 
     // Return type of block
     if (return_types.length > 1) {
@@ -676,6 +726,64 @@ void compile_block(Compiler *c, Ast *code) {
 
     *c->enc_err = *block.enc_err;
     dtor_compiler(&block);
+}
+
+void compile_lambda(Compiler *c, Ast *code) {
+    append_list(&c->instr, from_double(JMP));
+    append_list(&c->instr, nil_val);
+    int jmp_loc = c->instr.length - 1;
+    int ip = instr_count(c); // Instruction pointer for call
+
+    Ast *block = get_child(code, 0);
+    compile_block(c, block);
+    const Ang_Type *lhs_type = get_child(block, 0)->eval_type;
+    const Ang_Type *rhs_type = block->eval_type;
+    code->eval_type = get_lambda_type(c, lhs_type, rhs_type);
+    append_list(&c->instr, from_double(RET));
+
+    set_list(&c->instr, jmp_loc, from_double(instr_count(c)));
+
+    append_list(&c->instr, from_double(CONS_LAMBDA));
+    append_list(&c->instr, from_ptr((void *) code->eval_type));
+    append_list(&c->instr, from_double(ip));
+}
+
+void compile_lambda_call(Compiler *c, Ast *code) {
+    Ast *lambda = get_child(code, 0);
+    Ast *param = get_child(code, 1);
+
+    compile(c, lambda);
+    compile(c, param);
+
+    const Ang_Type *lambda_type = lambda->eval_type;
+    if (!lambda_type || lambda_type->cat != LAMBDA) {
+        error(code->assoc_token->line,
+            NON_LAMBDA_CALL,
+            "Cannot call a non-lambda.\n");
+        *c->enc_err = 1;
+        return;
+    }
+    const Ang_Type *lhs_type = get_ptr(access_list(lambda_type->slot_types, 0));
+    if (!type_structure_equality(lhs_type, param->eval_type)) {
+        char error_msg[256 + strlen(lhs_type->name) + strlen(param->eval_type->name)];
+        sprintf(error_msg,
+            "Lambda requires parameter of type %s. Received parameter of type %s.\n",
+            lhs_type->name,
+            param->eval_type->name);
+        error(code->assoc_token->line,
+            INVALID_LAMBDA_PARAM,
+            error_msg);
+        *c->enc_err = 1;
+        return;
+    }
+    code->eval_type = get_ptr(access_list(lambda_type->slot_types, 1));
+    append_list(&c->instr, from_double(CALL));
+}
+
+void compile_placeholder(Compiler *c, Ast *code) {
+    code->eval_type = compile_type(c, get_child(code, 0));
+    append_list(&c->instr, from_double(LOAD_REG));
+    append_list(&c->instr, from_double(A));
 }
 
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
@@ -735,6 +843,11 @@ size_t num_types(const Compiler *c) {
         c = c->parent;
     }
     return num;
+}
+
+size_t instr_count(const Compiler *c) {
+    if (!c->parent) return c->instr.length;
+    return c->instr.length + instr_count(c->parent);
 }
 
 Compiler *get_root_compiler(Compiler *c) {

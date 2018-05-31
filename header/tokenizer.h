@@ -30,11 +30,12 @@
     code(LT) \
     code(LTE) \
     code(PIPE) \
+    code(ARROW) \
     code(IDENT) \
     code(STR) \
     code(NUM) \
     code(VAR) \
-    code(FUNC) \
+    code(FN) \
     code(TYPE_KEYWORD) \
     code(RETURN) \
     code(TEOF)

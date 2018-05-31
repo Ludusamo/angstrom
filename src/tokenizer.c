@@ -105,7 +105,7 @@ Value number(Scanner *scanner) {
 void populate_keywords(Hashtable *keywords) {
     ctor_hashtable(keywords);
     set_hashtable(keywords, "var", from_double(VAR));
-    set_hashtable(keywords, "func", from_double(FUNC));
+    set_hashtable(keywords, "fn", from_double(FN));
     set_hashtable(keywords, "_", from_double(UNDERSCORE));
     set_hashtable(keywords, "type", from_double(TYPE_KEYWORD));
     set_hashtable(keywords, "return", from_double(RETURN));
@@ -148,7 +148,13 @@ int tokenize(List *tokens, const char *src, const char *src_name) {
             add_token(tokens, &scan, match(&scan, '=') ? NEQ : NOT, nil_val);
             break;
         case '=':
-            add_token(tokens, &scan, match(&scan, '=') ? EQ_EQ : EQ, nil_val);
+            if (match(&scan, '=')) {
+                add_token(tokens, &scan, EQ_EQ, nil_val);
+            } else if (match(&scan, '>')) {
+                add_token(tokens, &scan, ARROW, nil_val);
+            } else {
+                add_token(tokens, &scan, EQ, nil_val);
+            }
             break;
         case '<':
             add_token(tokens, &scan, match(&scan, '=') ? LTE : LT, nil_val);

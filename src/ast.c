@@ -84,7 +84,7 @@ void synchronize(Parser *parser) {
     while (!at_end(parser)) {
         switch(peek_token(parser, 1)->type) {
         case VAR:
-        case FUNC:
+        case FN:
         case RBRACE:
             return;
         default:
@@ -182,7 +182,18 @@ Ast *parse_type_decl(Parser *parser) {
         }
         return 0;
     }
-    return parse_decl(parser);
+    return parse_lambda_call(parser);
+}
+
+Ast *parse_lambda_call(Parser *parser) {
+    Ast *expr = parse_decl(parser);
+    while (peek_token(parser, 1)->type == LPAREN) {
+        Ast *lambda_call = create_ast(LAMBDA_CALL, previous_token(parser));
+        append_list(&lambda_call->nodes, from_ptr(expr));
+        append_list(&lambda_call->nodes, from_ptr(parse_decl(parser)));
+        expr = lambda_call;
+    }
+    return expr;
 }
 
 Ast *parse_decl(Parser *parser) {
@@ -264,7 +275,9 @@ Ast *parse_type(Parser *parser) {
                     UNCLOSED_TUPLE,
                     "Tuple type missing closing ')'\n");
                 *parser->enc_err = 1;
-                return expr;
+                synchronize(parser);
+                destroy_ast(expr);
+                return 0;
             }
         }
         consume_token(parser, RPAREN, "Panic...");
@@ -273,6 +286,8 @@ Ast *parse_type(Parser *parser) {
         error(lineno, UNEXPECTED_TOKEN, "Expected type identifier.\n");
         *parser->enc_err = 1;
         synchronize(parser);
+        destroy_ast(expr);
+        return 0;
     }
 
     // Sum Type
@@ -285,6 +300,7 @@ Ast *parse_type(Parser *parser) {
     return expr;
 }
 
+
 Ast *parse_block(Parser *parser) {
     if (match_token(parser, LBRACE)) {
         Ast *expr = create_ast(BLOCK, previous_token(parser));
@@ -294,7 +310,9 @@ Ast *parse_block(Parser *parser) {
                     UNCLOSED_BLOCK,
                     "Block missing closing '}'\n");
                 *parser->enc_err = 1;
-                return expr;
+                synchronize(parser);
+                destroy_ast(expr);
+                return 0;
             } else {
                 append_list(&expr->nodes, from_ptr(parse_expression(parser)));
             }
@@ -311,6 +329,91 @@ Ast *parse_return(Parser *parser) {
         Ast *expr = create_ast(RET_EXPR, previous_token(parser));
         append_list(&expr->nodes, from_ptr(parse_expression(parser)));
         return expr;
+    }
+    return parse_lambda(parser);
+}
+
+static Ast *record_type_to_destr(Parser *parser, Ast *type) {
+    Ast *lit = create_ast(LITERAL, type->assoc_token);
+    for (size_t i = 0; i < type->nodes.length; i++) {
+        Ast *child = get_child(type, i);
+        if (get_child(child, 0)->type == PRODUCT_TYPE) {
+            append_list(&lit->nodes,
+                from_ptr(record_type_to_destr(parser, get_child(child, 0))));
+        } else if (get_child(child, 0)->type == TYPE) {
+            printf("%s\n", child->assoc_token->lexeme);
+            append_list(&lit->nodes,
+                from_ptr(create_ast(VARIABLE, child->assoc_token)));
+        } else {
+            error(peek_token(parser, 1)->line,
+                TYPE_ERROR,
+                "Must supply product type to lambda.\n");
+            *parser->enc_err = 1;
+            synchronize(parser);
+            destroy_ast(lit);
+            return 0;
+        }
+    }
+    return lit;
+}
+
+Ast *parse_lambda(Parser *parser) {
+    if (match_token(parser, FN)) {
+        Ast *lambda = create_ast(LAMBDA_LIT, previous_token(parser));
+
+        // Place everything into its own block
+        Ast *block = create_ast(BLOCK, previous_token(parser));
+        append_list(&lambda->nodes, from_ptr(block));
+
+        Ast *type = parse_type(parser);
+        if (type->nodes.length == 0 || type->type == PRODUCT_TYPE) {
+            if (type->nodes.length == 0) {
+                destroy_ast(type);
+                free(type);
+            } else {
+                if (type->nodes.length == 1) {
+                    // Variable declaration
+                    const Token *var_name = get_child(type, 0)->assoc_token;
+                    append_list(&block->nodes,
+                        from_ptr(create_ast(VAR_DECL, var_name)));
+
+                    // only one type
+                    Ast *ptype = get_child(get_child(type, 0), 0);
+                    Ast *copy = create_ast(ptype->type, ptype->assoc_token);
+                    destroy_ast(type);
+                    free(type);
+                    type = copy;
+                } else {
+                    Ast *destr = create_ast(DESTR_DECL, 0);
+                    append_list(&block->nodes, from_ptr(destr));
+                    append_list(&destr->nodes,
+                        from_ptr(record_type_to_destr(parser, type)));
+                }
+                Ast *placehold = create_ast(PLACEHOLD, 0);
+                append_list(&placehold->nodes, from_ptr(type));
+                append_list(&get_child(block, 0)->nodes, from_ptr(placehold));
+            }
+        } else {
+            error(peek_token(parser, 1)->line,
+                TYPE_ERROR,
+                "Must supply product type to lambda.\n");
+            *parser->enc_err = 1;
+            synchronize(parser);
+            destroy_ast(lambda);
+            return 0;
+        }
+        if (match_token(parser, ARROW)) {
+            append_list(&block->nodes, from_ptr(parse_expression(parser)));
+        } else {
+            error(peek_token(parser, 1)->line,
+                UNEXPECTED_TOKEN,
+                "Lambda expected '=>' token.\n");
+            *parser->enc_err = 1;
+            synchronize(parser);
+            destroy_ast(lambda);
+            return 0;
+        }
+        return lambda;
     }
     return parse_primary(parser);
 }

@@ -45,12 +45,17 @@ Ang_Type *get_tuple_type(Compiler *c, const List *slots, const List *types);
 
 void compile_block(Compiler *c, Ast *code);
 
+void compile_lambda(Compiler *c, Ast *code);
+void compile_lambda_call(Compiler *c, Ast *code);
+void compile_placeholder(Compiler *c, Ast *code);
+
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value);
 
 const Symbol *find_symbol(const Compiler *c, const char *sym);
 Ang_Type *find_type(const Compiler *c, const char *sym);
 size_t num_local(const Compiler *c);
 size_t num_types(const Compiler *c);
+size_t instr_count(const Compiler *c);
 Compiler *get_root_compiler(Compiler *c);
 
 #endif // COMPILER_H

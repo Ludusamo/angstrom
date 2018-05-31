@@ -21,7 +21,8 @@ void dtor_ang_env(Ang_Env *env) {
     foreach (type_iter) {
         Ang_Type *t =
             get_ptr(((Keyval*) (get_ptr(val_iter_hashtable(&type_iter))))->val);
-        if (!t->user_defined && (t->cat == PRODUCT || t->cat == SUM)) {
+        if (!t->user_defined && 
+            (t->cat == PRODUCT || t->cat == SUM || t->cat == LAMBDA)) {
             free((void*) t->name);
 
             if (t->cat == PRODUCT) {
@@ -43,7 +44,6 @@ void dtor_ang_env(Ang_Env *env) {
                 destroy_iter_hashtable(&slot_iter);
             }
 
-            
             dtor_hashtable(t->slots);
             dtor_list(t->slot_types);
             free(t->slots);

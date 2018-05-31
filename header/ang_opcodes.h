@@ -24,6 +24,7 @@
     code(PUSRET, 0) \
     code(CONS_TUPLE, 2) \
     code(LOAD_TUPLE, 0) \
+    code(CONS_LAMBDA, 2) \
     code(SET_FP, 0) \
     code(RESET_FP, 0) \
     code(DUP, 0) \
@@ -33,7 +34,7 @@
     code(SWAP_REG, 2) \
     code(MOV_REG, 2) \
     code(JMP, 1) \
-    code(CALL, 2) \
+    code(CALL, 0) \
     code(RET, 0)
 
 #define DEFINE_ENUM_TYPE(type, _) type,

@@ -2,6 +2,7 @@
 
 #include "error.h"
 #include "ang_primitives.h"
+#include "lambda.h"
 #include <stdio.h>
 
 void ctor_memory(Memory *mem, size_t gmem_size) {
@@ -52,11 +53,16 @@ void mark_all_objects(Memory *mem) {
 void sweep_mem(Memory *mem) {
     Ang_Obj **obj = &mem->mem_head;
     while (*obj) {
-        if ((*obj)->type->id >= PRIMITIVE_COUNT) { // Is a user defined type
+        if ((*obj)->type->cat != PRIMITIVE &&
+                (*obj)->type->cat != LAMBDA) { // Is a user defined type
             List *tuple_val = get_ptr((*obj)->v);
             dtor_list(tuple_val);
             free(tuple_val);
             tuple_val = 0;
+        } else if ((*obj)->type->cat == LAMBDA) {
+            Lambda *l = get_ptr((*obj)->v);
+            destroy_lambda(l);
+            free(l);
         }
         if (!(*obj)->marked) {
             Ang_Obj *unreachable = *obj;
