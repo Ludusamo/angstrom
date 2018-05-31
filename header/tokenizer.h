@@ -36,6 +36,7 @@
     code(NUM) \
     code(VAR) \
     code(FN) \
+    code(MATCH) \
     code(TYPE_KEYWORD) \
     code(RETURN) \
     code(TEOF)

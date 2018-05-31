@@ -187,7 +187,7 @@ Ast *parse_type_decl(Parser *parser) {
 
 Ast *parse_lambda_call(Parser *parser) {
     Ast *expr = parse_decl(parser);
-    while (peek_token(parser, 1)->type == LPAREN) {
+    while (!at_end(parser) && peek_token(parser, 1)->type == LPAREN) {
         Ast *lambda_call = create_ast(LAMBDA_CALL, previous_token(parser));
         append_list(&lambda_call->nodes, from_ptr(expr));
         append_list(&lambda_call->nodes, from_ptr(parse_decl(parser)));

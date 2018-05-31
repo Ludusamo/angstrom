@@ -109,6 +109,7 @@ void populate_keywords(Hashtable *keywords) {
     set_hashtable(keywords, "_", from_double(UNDERSCORE));
     set_hashtable(keywords, "type", from_double(TYPE_KEYWORD));
     set_hashtable(keywords, "return", from_double(RETURN));
+    set_hashtable(keywords, "match", from_double(MATCH));
 }
 
 const Token *last_scanned_token(const List *tokens) {
