@@ -756,7 +756,7 @@ void compile_lambda_call(Compiler *c, Ast *code) {
     compile(c, param);
 
     const Ang_Type *lambda_type = lambda->eval_type;
-    if (lambda_type->cat != LAMBDA) {
+    if (!lambda_type || lambda_type->cat != LAMBDA) {
         error(code->assoc_token->line,
             NON_LAMBDA_CALL,
             "Cannot call a non-lambda.\n");
