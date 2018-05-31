@@ -165,9 +165,8 @@ void eval(Ang_VM *vm) {
         vm->mem.ip = get_next_op(vm).as_int32;
         break;
     case CALL: {
-        int ip = get_next_op(vm).as_int32;
-        int num_args = get_next_op(vm).as_int32;
-        push_num_stack(vm, num_args);
+        vm->mem.registers[A] = pop_stack(&vm->mem);
+        int ip = pop_int(&vm->mem);
         push_num_stack(vm, vm->mem.fp);
         push_num_stack(vm, vm->mem.ip);
         vm->mem.fp = vm->mem.sp;
@@ -179,7 +178,6 @@ void eval(Ang_VM *vm) {
         vm->mem.sp = vm->mem.fp;
         vm->mem.ip = pop_stack(&vm->mem)->v.as_int32;
         vm->mem.fp = pop_stack(&vm->mem)->v.as_int32;
-        vm->mem.sp -= pop_stack(&vm->mem)->v.as_int32;
         push_stack(&vm->mem, vm->mem.registers[RET_VAL]);
     }
 }

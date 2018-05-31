@@ -82,6 +82,9 @@ void compile(Compiler *c, Ast *code) {
     case LAMBDA_LIT:
         compile_lambda(c, code);
         break;
+    case LAMBDA_CALL:
+        compile_lambda_call(c, code);
+        break;
     case PLACEHOLD:
         compile_placeholder(c, code);
         break;
@@ -218,7 +221,6 @@ void compile_variable(Compiler *c, Ast *code) {
     }
     append_list(&c->instr, from_double(sym->global ? GLOAD : LOAD));
     append_list(&c->instr, from_double(sym->loc));
-    printf("%s type is %s\n", code->assoc_token->lexeme, sym->type->name);
     code->eval_type = sym->type;
 }
 
@@ -678,8 +680,6 @@ void compile_block(Compiler *c, Ast *code) {
     block.enc_err = c->enc_err;
     block.parent = c;
 
-    append_list(&c->instr, from_double(SET_FP));
-
     List return_types;
     ctor_list(&return_types);
 
@@ -715,7 +715,6 @@ void compile_block(Compiler *c, Ast *code) {
         append_list(&c->instr, from_double(block.env.symbols.size));
     }
     append_list(&c->instr, from_double(PUSRET));
-    append_list(&c->instr, from_double(RESET_FP));
 
     // Return type of block
     if (return_types.length > 1) {
@@ -745,11 +744,19 @@ void compile_lambda(Compiler *c, Ast *code) {
 
     append_list(&c->instr, from_double(PUSOBJ));
     append_list(&c->instr, from_ptr((void *) code->eval_type));
-    append_list(&c->instr, from_double(c->instr.length + 2));
+    append_list(&c->instr, from_double(jmp_loc + 1));
+}
+
+void compile_lambda_call(Compiler *c, Ast *code) {
+    compile(c, get_child(code, 0));
+    compile(c, get_child(code, 1));
+    append_list(&c->instr, from_double(CALL));
 }
 
 void compile_placeholder(Compiler *c, Ast *code) {
     code->eval_type = compile_type(c, get_child(code, 0));
+    append_list(&c->instr, from_double(LOAD_REG));
+    append_list(&c->instr, from_double(A));
 }
 
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {

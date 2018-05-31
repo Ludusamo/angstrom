@@ -188,7 +188,7 @@ Ast *parse_type_decl(Parser *parser) {
 Ast *parse_lambda_call(Parser *parser) {
     Ast *expr = parse_decl(parser);
     if (peek_token(parser, 1)->type == LPAREN) {
-        Ast *lambda_call = create_ast(LAMBDA_CALL, 0);
+        Ast *lambda_call = create_ast(LAMBDA_CALL, previous_token(parser));
         append_list(&lambda_call->nodes, from_ptr(expr));
         append_list(&lambda_call->nodes, from_ptr(parse_expression(parser)));
         return lambda_call;
@@ -367,27 +367,32 @@ Ast *parse_lambda(Parser *parser) {
 
         Ast *type = parse_type(parser);
         if (type->nodes.length == 0 || type->type == PRODUCT_TYPE) {
-            Ast *placehold = create_ast(PLACEHOLD, 0);
             if (type->nodes.length == 0) {
                 destroy_ast(type);
-            } else if (type->nodes.length == 1) {
-                // Variable declaration
-                const Token *var_name = get_child(type, 0)->assoc_token;
-                append_list(&block->nodes,
-                    from_ptr(create_ast(VAR_DECL, var_name)));
-
-                // only one type
-                append_list(&placehold->nodes,
-                    from_ptr(get_child(get_child(type, 0), 0)));
+                free(type);
             } else {
-                Ast *destr = create_ast(DESTR_DECL, 0);
-                append_list(&block->nodes, from_ptr(destr));
-                append_list(&destr->nodes,
-                    from_ptr(record_type_to_destr(parser, type)));
+                if (type->nodes.length == 1) {
+                    // Variable declaration
+                    const Token *var_name = get_child(type, 0)->assoc_token;
+                    append_list(&block->nodes,
+                        from_ptr(create_ast(VAR_DECL, var_name)));
 
+                    // only one type
+                    Ast *ptype = get_child(get_child(type, 0), 0);
+                    Ast *copy = create_ast(ptype->type, ptype->assoc_token);
+                    destroy_ast(type);
+                    free(type);
+                    type = copy;
+                } else {
+                    Ast *destr = create_ast(DESTR_DECL, 0);
+                    append_list(&block->nodes, from_ptr(destr));
+                    append_list(&destr->nodes,
+                        from_ptr(record_type_to_destr(parser, type)));
+                }
+                Ast *placehold = create_ast(PLACEHOLD, 0);
                 append_list(&placehold->nodes, from_ptr(type));
+                append_list(&get_child(block, 0)->nodes, from_ptr(placehold));
             }
-            append_list(&get_child(block, 0)->nodes, from_ptr(placehold));
         } else {
             error(peek_token(parser, 1)->line,
                 TYPE_ERROR,
