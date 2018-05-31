@@ -697,7 +697,7 @@ void compile_block(Compiler *c, Ast *code) {
     }
 
     // Set all return jump locations to here
-    Value jmp_loc = from_double(c->instr.length + block.instr.length);
+    Value jmp_loc = from_double(instr_count(&block));
     for (size_t i = 0; i < block.jmp_locs.length; i++) {
         int jmp_instr = access_list(&block.jmp_locs, i).as_int32;
         set_list(&block.instr, jmp_instr, jmp_loc);
@@ -732,6 +732,7 @@ void compile_lambda(Compiler *c, Ast *code) {
     append_list(&c->instr, from_double(JMP));
     append_list(&c->instr, nil_val);
     int jmp_loc = c->instr.length - 1;
+    int ip = instr_count(c); // Instruction pointer for call
 
     Ast *block = get_child(code, 0);
     compile_block(c, block);
@@ -740,11 +741,11 @@ void compile_lambda(Compiler *c, Ast *code) {
     code->eval_type = get_lambda_type(c, lhs_type, rhs_type);
     append_list(&c->instr, from_double(RET));
 
-    set_list(&c->instr, jmp_loc, from_double(c->instr.length));
+    set_list(&c->instr, jmp_loc, from_double(instr_count(c)));
 
     append_list(&c->instr, from_double(CONS_LAMBDA));
     append_list(&c->instr, from_ptr((void *) code->eval_type));
-    append_list(&c->instr, from_double(jmp_loc + 1));
+    append_list(&c->instr, from_double(ip));
 }
 
 void compile_lambda_call(Compiler *c, Ast *code) {
@@ -753,7 +754,15 @@ void compile_lambda_call(Compiler *c, Ast *code) {
 
     compile(c, lambda);
     compile(c, param);
+
     const Ang_Type *lambda_type = lambda->eval_type;
+    if (lambda_type->cat != LAMBDA) {
+        error(code->assoc_token->line,
+            NON_LAMBDA_CALL,
+            "Cannot call a non-lambda.\n");
+        *c->enc_err = 1;
+        return;
+    }
     const Ang_Type *lhs_type = get_ptr(access_list(lambda_type->slot_types, 0));
     if (!type_structure_equality(lhs_type, param->eval_type)) {
         char error_msg[256 + strlen(lhs_type->name) + strlen(param->eval_type->name)];
@@ -834,6 +843,11 @@ size_t num_types(const Compiler *c) {
         c = c->parent;
     }
     return num;
+}
+
+size_t instr_count(const Compiler *c) {
+    if (!c->parent) return c->instr.length;
+    return c->instr.length + instr_count(c->parent);
 }
 
 Compiler *get_root_compiler(Compiler *c) {

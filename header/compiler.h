@@ -55,6 +55,7 @@ const Symbol *find_symbol(const Compiler *c, const char *sym);
 Ang_Type *find_type(const Compiler *c, const char *sym);
 size_t num_local(const Compiler *c);
 size_t num_types(const Compiler *c);
+size_t instr_count(const Compiler *c);
 Compiler *get_root_compiler(Compiler *c);
 
 #endif // COMPILER_H

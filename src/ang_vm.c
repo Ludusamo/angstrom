@@ -180,8 +180,8 @@ void eval(Ang_VM *vm) {
         int ip = l->ip;
         push_num_stack(vm, vm->mem.fp);
         push_num_stack(vm, vm->mem.ip);
-        load_lambda_env(l, &vm->mem);
         vm->mem.fp = vm->mem.sp;
+        load_lambda_env(l, &vm->mem);
         vm->mem.ip = ip;
         break;
     }
