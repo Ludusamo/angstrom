@@ -85,6 +85,8 @@ void synchronize(Parser *parser) {
         switch(peek_token(parser, 1)->type) {
         case VAR:
         case FN:
+        case MATCH:
+        case TEOF:
         case RBRACE:
             return;
         default:
@@ -186,14 +188,32 @@ Ast *parse_type_decl(Parser *parser) {
 }
 
 Ast *parse_lambda_call(Parser *parser) {
-    Ast *expr = parse_decl(parser);
+    Ast *expr = parse_match(parser);
     while (!at_end(parser) && peek_token(parser, 1)->type == LPAREN) {
         Ast *lambda_call = create_ast(LAMBDA_CALL, previous_token(parser));
         append_list(&lambda_call->nodes, from_ptr(expr));
-        append_list(&lambda_call->nodes, from_ptr(parse_decl(parser)));
+        append_list(&lambda_call->nodes, from_ptr(parse_match(parser)));
         expr = lambda_call;
     }
     return expr;
+}
+
+Ast *parse_match(Parser *parser) {
+    if (match_token(parser, MATCH)) {
+        consume_token(parser, LBRACE, "Expected '{' after match.\n");
+        Ast *match = create_ast(PATTERN_MATCH, previous_token(parser));
+        while (!match_token(parser, RBRACE)) {
+            Ast *pattern = create_ast(PATTERN, previous_token(parser));
+            append_list(&match->nodes, from_ptr(pattern));
+            append_list(&pattern->nodes, from_ptr(parse_expression(parser)));
+            consume_token(parser,
+                ARROW,
+                "Expected '=>' to denote pattern behaviour.\n");
+            append_list(&pattern->nodes, from_ptr(parse_expression(parser)));
+        }
+        return match;
+    }
+    return parse_decl(parser);
 }
 
 Ast *parse_decl(Parser *parser) {
