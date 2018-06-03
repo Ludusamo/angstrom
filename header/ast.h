@@ -68,8 +68,6 @@ int at_end(const Parser *parser);
 
 void synchronize(Parser *parser);
 
-Ast *record_type_to_destr(Parser *parser, Ast *type);
-
 Ast *parse_expression(Parser *parser);
 Ast *parse_equality(Parser *parser);
 Ast *parse_comparison(Parser *parser);
