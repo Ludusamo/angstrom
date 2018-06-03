@@ -205,7 +205,44 @@ Ast *parse_match(Parser *parser) {
         while (!match_token(parser, RBRACE)) {
             Ast *pattern = create_ast(PATTERN, previous_token(parser));
             append_list(&match->nodes, from_ptr(pattern));
-            append_list(&pattern->nodes, from_ptr(parse_expression(parser)));
+            if (match_token(parser, NUM) || match_token(parser, STR)) {
+                Ast *num_lit = create_ast(LITERAL, previous_token(parser));
+                append_list(&pattern->nodes, from_ptr(num_lit));
+            } else {
+                Ast *type = parse_type(parser);
+                if (type->type == WILDCARD) {
+
+                } else if (type->nodes.length == 0 || type->type == PRODUCT_TYPE) {
+                    if (type->nodes.length == 0) {
+                        destroy_ast(type);
+                        free(type);
+                    } else {
+                        if (type->nodes.length == 1) {
+                            // Variable declaration
+                            const Token *var_name = get_child(type, 0)->assoc_token;
+                            append_list(&pattern->nodes,
+                                from_ptr(create_ast(VAR_DECL, var_name)));
+
+                            // only one type
+                            Ast *ptype = get_child(get_child(type, 0), 0);
+                            Ast *copy = create_ast(ptype->type, ptype->assoc_token);
+                            destroy_ast(type);
+                            free(type);
+                            type = copy;
+                        } else {
+                            Ast *destr = create_ast(DESTR_DECL, 0);
+                            append_list(&pattern->nodes, from_ptr(destr));
+                            append_list(&destr->nodes,
+                                from_ptr(record_type_to_destr(parser, type)));
+                        }
+                        Ast *placehold = create_ast(PLACEHOLD, 0);
+                        append_list(&placehold->nodes, from_ptr(type));
+                        append_list(&get_child(pattern, 0)->nodes, from_ptr(placehold));
+                    }
+                } else {
+                    append_list(&pattern->nodes, from_ptr(type));
+                }
+            }
             consume_token(parser,
                 ARROW,
                 "Expected '=>' to denote pattern behaviour.\n");
@@ -282,6 +319,8 @@ Ast *parse_type(Parser *parser) {
             expr->type = KEYVAL;
             append_list(&expr->nodes, from_ptr(parse_type(parser)));
         }
+    } else if (match_token(parser, UNDERSCORE)) {
+        expr = create_ast(WILDCARD, previous_token(parser));
     } else if (match_token(parser, LPAREN)) {
         expr = create_ast(PRODUCT_TYPE, previous_token(parser));
         while (peek_token(parser, 1)->type != RPAREN) {
@@ -353,7 +392,7 @@ Ast *parse_return(Parser *parser) {
     return parse_lambda(parser);
 }
 
-static Ast *record_type_to_destr(Parser *parser, Ast *type) {
+Ast *record_type_to_destr(Parser *parser, Ast *type) {
     Ast *lit = create_ast(LITERAL, type->assoc_token);
     for (size_t i = 0; i < type->nodes.length; i++) {
         Ast *child = get_child(type, i);

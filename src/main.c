@@ -62,6 +62,7 @@ void run_script(char *file_path) {
     Primitive_Types defaults;
     ctor_primitive_types(&defaults);
     set_hashtable(&vm.compiler.env.types, "Und", from_ptr(&defaults.und_default));
+    set_hashtable(&vm.compiler.env.types, "Any", from_ptr(&defaults.und_default));
     set_hashtable(&vm.compiler.env.types, "Num", from_ptr(&defaults.num_default));
     set_hashtable(&vm.compiler.env.types, "Bool", from_ptr(&defaults.bool_default));
     set_hashtable(&vm.compiler.env.types, "String", from_ptr(&defaults.string_default));
@@ -84,6 +85,7 @@ void run_repl() {
     Primitive_Types defaults;
     ctor_primitive_types(&defaults);
     set_hashtable(&vm.compiler.env.types, "Und", from_ptr(&defaults.und_default));
+    set_hashtable(&vm.compiler.env.types, "Any", from_ptr(&defaults.any_default));
     set_hashtable(&vm.compiler.env.types, "Num", from_ptr(&defaults.num_default));
     set_hashtable(&vm.compiler.env.types, "Bool", from_ptr(&defaults.bool_default));
     set_hashtable(&vm.compiler.env.types, "String", from_ptr(&defaults.string_default));

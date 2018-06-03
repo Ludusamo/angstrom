@@ -168,7 +168,8 @@ void compile_literal(Compiler *c, Ast *code) {
             || code->assoc_token->type == LPAREN) {
         int is_record = get_child(code, 0)->type == KEYVAL;
         for (int i = code->nodes.length - 1; i >= 0; i--) {
-            if (is_record && get_child(code, i)->type != KEYVAL) {
+            if (is_record && (get_child(code, i)->type != KEYVAL
+                    && get_child(code, i)->type != WILDCARD)) {
                 error(code->assoc_token->line,
                     INCOMPLETE_RECORD,
                     "Record type needs all members to be key value pairs.\n");
@@ -182,6 +183,11 @@ void compile_literal(Compiler *c, Ast *code) {
         List slots;
         ctor_list(&slots);
         for (size_t i = 0; i < code->nodes.length; i++) {
+            if (code->type == WILDCARD) {
+                append_list(&types, from_ptr((void *) find_type(c, "Any")));
+                append_list(&slots, from_ptr((void *) code->assoc_token->lexeme));
+                continue;
+            }
             const Ang_Type *child_type = get_child(code, i)->eval_type;
             append_list(&types, from_ptr((void *) child_type));
             if (is_record) {
@@ -562,7 +568,8 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
 
             // Populating slots with slot number
             if (is_record) {
-                if (get_child(code, i)->type != KEYVAL) {
+                if (get_child(code, i)->type != KEYVAL
+                        && get_child(code, i)->type != WILDCARD) {
                     error(code->assoc_token->line,
                         INCOMPLETE_RECORD,
                         "Record type needs all members to be key value pairs.\n");
@@ -601,6 +608,8 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
         dtor_list(&types);
         code->eval_type = sum_type;
         return sum_type;
+    } else if (code->type == WILDCARD) {
+        type_sym = "Any";
     }
     Ang_Type *type = find_type(c, type_sym);
     if (!type) {

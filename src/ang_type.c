@@ -46,35 +46,45 @@ static int sum_type_equality(const Ang_Type *t1, const Ang_Type *t2) {
 }
 
 static int product_type_equality(const Ang_Type *t1, const Ang_Type *t2) {
-    if (t2->cat != PRODUCT) return 0;
+    if (t1->cat != PRODUCT || t2->cat != PRODUCT) return 0;
+    if (t1->slot_types->length > t2->slot_types->length) return 0;
     Iter iter;
     iter_hashtable(&iter, t1->slots);
     foreach(iter) {
         // Check to see if they have the same keys
         const Keyval *slot = get_ptr(val_iter_hashtable(&iter));
+
+        Ang_Type *other = get_ptr(access_list(t2->slot_types, slot->val.as_int32));
+        if (other->id == ANY_TYPE) continue;
+        if (strcmp(slot->key, "_") == 0) continue;
+
         Value t2_slot_num = access_hashtable(t2->slots, slot->key);
         if (t2_slot_num.bits == nil_val.bits) {
             destroy_iter_hashtable(&iter);
             return 0;
         }
 
-        // Check to see if the type of their slot is the same
-        const Ang_Type *slot_type1 = get_ptr(access_list(t1->slot_types, slot->val.as_int32));
-        const Ang_Type *slot_type2 = get_ptr(access_list(t2->slot_types, t2_slot_num.as_int32));
-        if (!type_equality(slot_type1, slot_type2)) {
-            destroy_iter_hashtable(&iter);
+        if (slot->val.as_int32 != t2_slot_num.as_int32) {
             return 0;
         }
     }
     destroy_iter_hashtable(&iter);
+
+    // Check to see if the type of their slots are the same
+    for (size_t i = 0; i < t1->slot_types->length; i++) {
+        Ang_Type *t1_type = get_ptr(access_list(t1->slot_types, i));
+        Ang_Type *t2_type = get_ptr(access_list(t2->slot_types, i));
+        if (!type_equality(t1_type, t2_type)) return 0;
+    }
     return 1;
 }
 
 int type_equality(const Ang_Type *t1, const Ang_Type *t2) {
     if (t1->id == t2->id) return 1;
+    else if (t1->id == ANY_TYPE || t2->id == ANY_TYPE) return 1;
     else if (t1->cat == PRIMITIVE) return 0;
     else if (t1->cat == SUM) return sum_type_equality(t1, t2);
-    else if (t1->cat == PRODUCT) product_type_equality(t1, t2);
+    else if (t1->cat == PRODUCT) return product_type_equality(t1, t2);
     return 0;
 }
 
