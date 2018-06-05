@@ -91,6 +91,29 @@ void eval(Ang_VM *vm) {
         push_num_stack(vm, left / right);
         break;
     }
+    case NUM_EQ: {
+        Ang_Obj *result = new_object(&vm->mem,
+            find_type(&vm->compiler, "Bool"));
+        result->v = pop_stack(&vm->mem)->v.bits == pop_stack(&vm->mem)->v.bits
+            ? true_val
+            : false_val;
+        push_stack(&vm->mem, result);
+        break;
+    }
+    case JE: {
+        int jmp_loc = get_next_op(vm).as_int32;
+        vm->mem.ip = pop_stack(&vm->mem)->v.bits == true_val.bits
+            ? jmp_loc
+            : vm->mem.ip;
+        break;
+    }
+    case JNE: {
+        int jmp_loc = get_next_op(vm).as_int32;
+        vm->mem.ip = pop_stack(&vm->mem)->v.bits == false_val.bits
+            ? jmp_loc
+            : vm->mem.ip;
+        break;
+    }
     case GSTORE:
         vm->mem.gmem[get_next_op(vm).as_int32] = pop_stack(&vm->mem);
         break;

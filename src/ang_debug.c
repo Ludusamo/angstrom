@@ -1,4 +1,5 @@
 #include "ang_debug.h"
+#include "ang_primitives.h"
 #include "utility.h"
 
 void print_stack_trace(const Ang_VM *vm) {
@@ -13,13 +14,19 @@ void print_stack_trace(const Ang_VM *vm) {
     }
     fprintf(stderr, "%*s", lenOffset, "[ ");
     for (int i = 0; i < sp; i++) {
-        if (is_double(vm->mem.stack[i]->v))
-            fprintf(stderr, "%.2lf ", vm->mem.stack[i]->v.as_double);
-        else if (is_ptr(vm->mem.stack[i]->v)) {
+        Value v = vm->mem.stack[i]->v;
+        const Ang_Type *t = vm->mem.stack[i]->type;
+        if (t->id == BOOL_TYPE) {
+            fprintf(stderr, "%s ", v.bits == true_val.bits
+                ? "true"
+                : "false");
+        } else if (is_double(v))
+            fprintf(stderr, "%.2lf ", v.as_double);
+        else if (is_ptr(v)) {
             fprintf(stderr, "<%s> ", vm->mem.stack[i]->type->name);
         }
         else
-            fprintf(stderr, "%d ", vm->mem.stack[i]->v.as_int32);
+            fprintf(stderr, "%d ", v.as_int32);
     }
     fprintf(stderr, "]\n");
 }

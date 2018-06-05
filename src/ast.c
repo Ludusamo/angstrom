@@ -247,11 +247,16 @@ Ast *parse_lambda_call(Parser *parser) {
 
 Ast *parse_match(Parser *parser) {
     if (match_token(parser, MATCH)) {
-        consume_token(parser, LBRACE, "Expected '{' after match.\n");
         Ast *match = create_ast(PATTERN_MATCH, previous_token(parser));
+        Ast *block = create_ast(BLOCK, 0);
+        append_list(&match->nodes, from_ptr(parse_expression(parser)));
+        append_list(&match->nodes, from_ptr(block));
+        consume_token(parser, LBRACE, "Expected '{' after match.\n");
         while (!match_token(parser, RBRACE)) {
+
             Ast *pattern = create_ast(PATTERN, previous_token(parser));
-            append_list(&match->nodes, from_ptr(pattern));
+            append_list(&block->nodes, from_ptr(pattern));
+
             if (match_token(parser, NUM) || match_token(parser, STR)) {
                 Ast *num_lit = create_ast(LITERAL, previous_token(parser));
                 append_list(&pattern->nodes, from_ptr(num_lit));
@@ -260,8 +265,9 @@ Ast *parse_match(Parser *parser) {
                 if (!type) {
                     return match;
                 } else if (type->type == WILDCARD) {
-
-                } else if (type->nodes.length == 0 || type->type == PRODUCT_TYPE) {
+                    append_list(&pattern->nodes,
+                        from_ptr(create_ast(WILDCARD, 0)));
+                } else if (type->type == PRODUCT_TYPE) {
                     append_list(&pattern->nodes, from_ptr(type_to_destr(type)));
                 } else {
                     append_list(&pattern->nodes, from_ptr(type));
@@ -270,7 +276,11 @@ Ast *parse_match(Parser *parser) {
             consume_token(parser,
                 ARROW,
                 "Expected '=>' to denote pattern behaviour.\n");
-            append_list(&pattern->nodes, from_ptr(parse_expression(parser)));
+
+            // Wrap in a return so it can use block construct to jump out
+            Ast *pseudo_return = create_ast(RET_EXPR, 0);
+            append_list(&pattern->nodes, from_ptr(pseudo_return));
+            append_list(&pseudo_return->nodes, from_ptr(parse_expression(parser)));
         }
         return match;
     }

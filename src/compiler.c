@@ -88,6 +88,12 @@ void compile(Compiler *c, Ast *code) {
     case PLACEHOLD:
         compile_placeholder(c, code);
         break;
+    case PATTERN_MATCH:
+        compile_match(c, code);
+        break;
+    case PATTERN:
+        compile_pattern(c, code);
+        break;
     case RET_EXPR:
         compile_return(c, code);
         break;
@@ -702,6 +708,10 @@ void compile_block(Compiler *c, Ast *code) {
         // Is return or last statement
         if (child->type == RET_EXPR || i + 1 == code->nodes.length) {
             append_list(&return_types, from_ptr((void *) child->eval_type));
+        } else if (child->type == PATTERN) {
+            // For pattern matching the second child of a pattern is a return
+            Ast *ret = get_child(child, 1);
+            append_list(&return_types, from_ptr((void *) ret->eval_type));
         }
     }
 
@@ -793,6 +803,71 @@ void compile_placeholder(Compiler *c, Ast *code) {
     code->eval_type = compile_type(c, get_child(code, 0));
     append_list(&c->instr, from_double(LOAD_REG));
     append_list(&c->instr, from_double(A));
+}
+
+void compile_pattern(Compiler *c, Ast *code) {
+    Compiler block;
+    ctor_compiler(&block);
+    block.enc_err = c->enc_err;
+    block.parent = c;
+
+    Ast *lhs = get_child(code, 0);
+    Ast *rhs = get_child(code, 1);
+
+    append_list(&block.instr, from_double(LOAD_REG));
+    append_list(&block.instr, from_double(A));
+    if (lhs->type == LITERAL) {
+        compile(&block, lhs);
+
+        if (lhs->eval_type->id == NUM_TYPE) {
+            append_list(&block.instr, from_double(NUM_EQ));
+        }
+    } else if (lhs->type == TYPE) {
+
+    } else if (lhs->type != WILDCARD) {
+        compile(&block, lhs);
+    }
+
+    if (lhs->type != WILDCARD) {
+        append_list(&block.instr, from_double(JNE));
+        append_list(&block.instr, nil_val);
+    }
+    int jmp_loc = block.instr.length - 1;
+
+    compile(&block, rhs);
+
+    if (lhs->type != WILDCARD) {
+        set_list(&block.instr, jmp_loc, from_double(instr_count(&block) + 1));
+    }
+
+    code->eval_type = rhs->eval_type;
+
+    // Set all return jump locations to here
+    Value end_jmp = from_double(instr_count(&block));
+    for (size_t i = 0; i < block.jmp_locs.length; i++) {
+        int jmp_instr = access_list(&block.jmp_locs, i).as_int32;
+        set_list(&block.instr, jmp_instr, end_jmp);
+    }
+
+    for (size_t i = 0; i < block.instr.length; i++) {
+        append_list(&c->instr, access_list(&block.instr, i));
+    }
+
+    *c->enc_err = *block.enc_err;
+    dtor_compiler(&block);
+}
+
+void compile_match(Compiler *c, Ast *code) {
+    Ast *expr = get_child(code, 0);
+    Ast *block = get_child(code, 1);
+
+    compile(c, expr);
+    append_list(&c->instr, from_double(STO_REG));
+    append_list(&c->instr, from_double(A));
+
+    compile_block(c, block);
+
+    code->eval_type = block->eval_type;
 }
 
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
