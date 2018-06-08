@@ -17,6 +17,8 @@
     code(MULF, 0) \
     code(DIVF, 0) \
     code(NUM_EQ, 0) \
+    code(CMP_TYPE, 1) \
+    code(CMP_STRUCT, 1) \
     code(JE, 1) \
     code(JNE, 1) \
     code(GSTORE, 1) \

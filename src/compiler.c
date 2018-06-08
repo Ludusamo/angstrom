@@ -823,8 +823,10 @@ void compile_pattern(Compiler *c, Ast *code) {
             append_list(&block.instr, from_double(NUM_EQ));
         }
     } else if (lhs->type == TYPE) {
-
+        append_list(&block.instr, from_double(CMP_TYPE));
+        append_list(&block.instr, from_ptr(compile_type(&block, lhs)));
     } else if (lhs->type != WILDCARD) {
+        append_list(&block.instr, from_double(POP));
         compile(&block, lhs);
     }
 

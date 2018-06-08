@@ -2,6 +2,7 @@
 
 #include "error.h"
 #include "string.h"
+#include "utility.h"
 #include <stdio.h>
 
 void ctor_parser(Parser *p) {
@@ -110,7 +111,12 @@ static Ast *record_type_to_destr(Ast *type) {
     Ast *lit = create_ast(LITERAL, type->assoc_token);
     for (size_t i = 0; i < type->nodes.length; i++) {
         Ast *child = get_child(type, i);
-        if (child->type == WILDCARD) {
+        if (child->type == TYPE) {
+            char *slot_num = calloc(num_digits(i) + 1, sizeof(char));
+            sprintf(slot_num, "%lu", i);
+            append_list(&lit->nodes,
+                from_ptr(create_ast(VARIABLE, child->assoc_token)));
+        } else if (child->type == WILDCARD) {
             append_list(&lit->nodes,
                 from_ptr(create_ast(WILDCARD, child->assoc_token)));
         } else if (get_child(child, 0)->type == PRODUCT_TYPE) {
