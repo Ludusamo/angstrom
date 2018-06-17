@@ -100,17 +100,23 @@ void eval(Ang_VM *vm) {
         push_stack(&vm->mem, result);
         break;
     }
-    case CMP_TYPE: {
-        Ang_Obj *result = new_object(&vm->mem,
-            find_type(&vm->compiler, "Bool"));
-        const Ang_Type *t1 = pop_stack(&vm->mem)->type;
-        const Ang_Type *t2 = get_ptr(get_next_op(vm));
-        result->v = type_equality(t1, t2)
-            ? true_val
-            : false_val;
-        push_stack(&vm->mem, result);
+#define CMP_CODE(code) \
+    {\
+    Ang_Obj *result = new_object(&vm->mem, \
+        find_type(&vm->compiler, "Bool")); \
+    const Ang_Type *t1 = pop_stack(&vm->mem)->type; \
+    const Ang_Type *t2 = get_ptr(get_next_op(vm)); \
+    result->v = code(t1, t2) \
+        ? true_val \
+        : false_val; \
+    push_stack(&vm->mem, result); }
+    case CMP_TYPE:
+        CMP_CODE(type_equality)
         break;
-    }
+    case CMP_STRUCT:
+        CMP_CODE(type_structure_equality)
+        break;
+#undef CMP_CODE
     case JE: {
         int jmp_loc = get_next_op(vm).as_int32;
         vm->mem.ip = pop_stack(&vm->mem)->v.bits == true_val.bits

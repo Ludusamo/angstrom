@@ -45,8 +45,11 @@ void compile_code(Compiler *c, const char *code, const char *src_name) {
 void compile(Compiler *c, Ast *code) {
     switch (code->type) {
     case PROG:
-        for (int i = 0; i < code->nodes.length; i++)
+        for (int i = 0; i < code->nodes.length; i++) {
             compile(c, get_child(code, i));
+            if (i + 1 != code->nodes.length)
+                append_list(&c->instr, from_double(POP));
+        }
         break;
     case ADD_OP:
     case MUL_OP:
