@@ -809,57 +809,45 @@ void compile_placeholder(Compiler *c, Ast *code) {
 }
 
 void compile_pattern(Compiler *c, Ast *code) {
-    Compiler block;
-    ctor_compiler(&block);
-    block.enc_err = c->enc_err;
-    block.parent = c;
-
     Ast *lhs = get_child(code, 0);
     Ast *rhs = get_child(code, 1);
 
-    append_list(&block.instr, from_double(LOAD_REG));
-    append_list(&block.instr, from_double(A));
+    append_list(&c->instr, from_double(LOAD_REG));
+    append_list(&c->instr, from_double(A));
     if (lhs->type == LITERAL) {
-        compile(&block, lhs);
+        compile(c, lhs);
 
         if (lhs->eval_type->id == NUM_TYPE) {
-            append_list(&block.instr, from_double(NUM_EQ));
+            append_list(&c->instr, from_double(NUM_EQ));
         }
     } else if (lhs->type == TYPE) {
-        append_list(&block.instr, from_double(CMP_TYPE));
-        append_list(&block.instr, from_ptr(compile_type(&block, lhs)));
+        append_list(&c->instr, from_double(CMP_TYPE));
+        append_list(&c->instr, from_ptr(compile_type(c, lhs)));
     } else if (lhs->type != WILDCARD) {
-        append_list(&block.instr, from_double(POP));
-        compile(&block, lhs);
+        append_list(&c->instr, from_double(CMP_STRUCT));
+        append_list(&c->instr, from_ptr(compile_type(c, lhs)));
     }
 
     if (lhs->type != WILDCARD) {
-        append_list(&block.instr, from_double(JNE));
-        append_list(&block.instr, nil_val);
+        append_list(&c->instr, from_double(JNE));
+        append_list(&c->instr, nil_val);
     }
-    int jmp_loc = block.instr.length - 1;
+    int jmp_loc = c->instr.length - 1;
 
-    compile(&block, rhs);
+    compile(c, rhs);
 
     if (lhs->type != WILDCARD) {
-        set_list(&block.instr, jmp_loc, from_double(instr_count(&block) + 1));
+        set_list(&c->instr, jmp_loc, from_double(instr_count(c) + 1));
     }
 
     code->eval_type = rhs->eval_type;
 
     // Set all return jump locations to here
-    Value end_jmp = from_double(instr_count(&block));
-    for (size_t i = 0; i < block.jmp_locs.length; i++) {
-        int jmp_instr = access_list(&block.jmp_locs, i).as_int32;
-        set_list(&block.instr, jmp_instr, end_jmp);
-    }
-
-    for (size_t i = 0; i < block.instr.length; i++) {
-        append_list(&c->instr, access_list(&block.instr, i));
-    }
-
-    *c->enc_err = *block.enc_err;
-    dtor_compiler(&block);
+    //Value end_jmp = from_double(instr_count(c));
+    //for (size_t i = 0; i < c->jmp_locs.length; i++) {
+    //    int jmp_instr = access_list(&c->jmp_locs, i).as_int32;
+    //    set_list(&c->instr, jmp_instr, end_jmp);
+    //}
 }
 
 void compile_match(Compiler *c, Ast *code) {

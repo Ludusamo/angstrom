@@ -57,6 +57,7 @@ const char *ast_type_to_str(Ast_Type t);
 void print_ast(const Ast *ast, int depth);
 
 Ast *create_ast(Ast_Type t, const Token *assoc_token);
+Ast *copy_ast(Ast *ast);
 
 const Token *advance_token(Parser *parser);
 const Token *peek_token(const Parser *parser, int peek);

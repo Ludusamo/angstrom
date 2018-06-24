@@ -25,7 +25,6 @@ const char *ast_type_to_str(Ast_Type t) {
 
 void print_ast(const Ast *ast, int depth) {
     if (!ast) return;
-    printf("%*s%s\n", depth * 4, "", ast_type_to_str(ast->type));
     for (size_t i = 0; i < ast->nodes.length; i++) {
         print_ast((Ast *) get_ptr(access_list(&ast->nodes, i)), depth + 1);
     }
@@ -37,6 +36,15 @@ Ast *create_ast(Ast_Type t, const Token *assoc_token) {
     ast->assoc_token = assoc_token;
     ctor_list(&ast->nodes);
     return ast;
+}
+
+Ast *copy_ast(Ast *ast) {
+    Ast *copy = create_ast(ast->type, ast->assoc_token);
+    for (size_t i = 0; i < ast->nodes.length; i++) {
+        append_list(&copy->nodes, from_ptr(copy_ast(get_child(ast, i))));
+    }
+    copy->eval_type = ast->eval_type;
+    return copy;
 }
 
 const Token *advance_token(Parser *parser) {
@@ -132,10 +140,7 @@ static Ast *record_type_to_destr(Ast *type) {
 
 static Ast *type_to_destr(Ast *type) {
     Ast *destr = 0;
-    if (type->nodes.length == 0) {
-        destroy_ast(type);
-        free(type);
-    } else {
+    if (type->nodes.length != 0) {
         if (type->nodes.length == 1) {
             // Variable declaration
             const Token *var_name = get_child(type, 0)->assoc_token;
@@ -144,8 +149,6 @@ static Ast *type_to_destr(Ast *type) {
             // only one type
             Ast *ptype = get_child(get_child(type, 0), 0);
             Ast *copy = create_ast(ptype->type, ptype->assoc_token);
-            destroy_ast(type);
-            free(type);
             type = copy;
         } else {
             destr = create_ast(DESTR_DECL, 0);
@@ -257,11 +260,15 @@ Ast *parse_match(Parser *parser) {
         Ast *block = create_ast(BLOCK, 0);
         append_list(&match->nodes, from_ptr(parse_expression(parser)));
         append_list(&match->nodes, from_ptr(block));
-        consume_token(parser, LBRACE, "Expected '{' after match.\n");
-        while (!match_token(parser, RBRACE)) {
+        while (match_token(parser, PIPE)) {
 
             Ast *pattern = create_ast(PATTERN, previous_token(parser));
             append_list(&block->nodes, from_ptr(pattern));
+
+            // Wrap the match code in a return
+            // so it can use block construct to jump out
+            Ast *pseudo_return = create_ast(RET_EXPR, 0);
+            Ast *ret_block = create_ast(BLOCK, 0);
 
             if (match_token(parser, NUM) || match_token(parser, STR)) {
                 Ast *num_lit = create_ast(LITERAL, previous_token(parser));
@@ -274,7 +281,8 @@ Ast *parse_match(Parser *parser) {
                     append_list(&pattern->nodes,
                         from_ptr(create_ast(WILDCARD, 0)));
                 } else if (type->type == PRODUCT_TYPE) {
-                    append_list(&pattern->nodes, from_ptr(type_to_destr(type)));
+                    append_list(&pattern->nodes, from_ptr(copy_ast(type)));
+                    append_list(&ret_block->nodes, from_ptr(type_to_destr(type)));
                 } else {
                     append_list(&pattern->nodes, from_ptr(type));
                 }
@@ -283,10 +291,9 @@ Ast *parse_match(Parser *parser) {
                 ARROW,
                 "Expected '=>' to denote pattern behaviour.\n");
 
-            // Wrap in a return so it can use block construct to jump out
-            Ast *pseudo_return = create_ast(RET_EXPR, 0);
             append_list(&pattern->nodes, from_ptr(pseudo_return));
-            append_list(&pseudo_return->nodes, from_ptr(parse_expression(parser)));
+            append_list(&pseudo_return->nodes, from_ptr(ret_block));
+            append_list(&ret_block->nodes, from_ptr(parse_expression(parser)));
         }
         return match;
     }
@@ -399,7 +406,6 @@ Ast *parse_type(Parser *parser) {
     return expr;
 }
 
-
 Ast *parse_block(Parser *parser) {
     if (match_token(parser, LBRACE)) {
         Ast *expr = create_ast(BLOCK, previous_token(parser));
@@ -511,8 +517,11 @@ Ast *parse_primary(Parser *parser) {
         return expr;
     }
 
-    int lineno = peek_token(parser, 1)->line;
-    error(lineno, UNEXPECTED_TOKEN, "Encountered unknown token.\n");
+    const Token *t = peek_token(parser, 1);
+    int lineno = t->line;
+    char error_msg[32 + strlen(t->lexeme)];
+    sprintf(error_msg, "Encountered unexpected token %s.\n", t->lexeme);
+    error(lineno, UNEXPECTED_TOKEN, error_msg);
     *parser->enc_err = 1;
     synchronize(parser);
     return 0;

@@ -1,0 +1,6 @@
+var fib0 = fn (func: Num => Num, n1: Num) => n1
+var fib = fn (n: Num) => {
+    match n
+        | 0 => 1
+        | 1 => 1
+}
