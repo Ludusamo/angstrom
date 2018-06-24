@@ -141,7 +141,13 @@ int tokenize(List *tokens, const char *src, const char *src_name) {
                 nil_val);
             break;
         case '.': add_token(tokens, &scan, DOT, nil_val); break;
-        case '-': add_token(tokens, &scan, MINUS, nil_val); break;
+        case '-': 
+            if (match(&scan, '>')) {
+                add_token(tokens, &scan, THIN_ARROW, nil_val);
+            } else {
+                add_token(tokens, &scan, MINUS, nil_val);
+            }
+            break;
         case '+': add_token(tokens, &scan, PLUS, nil_val); break;
         case '/': add_token(tokens, &scan, SLASH, nil_val); break;
         case '*': add_token(tokens, &scan, STAR, nil_val); break;

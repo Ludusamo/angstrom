@@ -150,6 +150,11 @@ static Ast *type_to_destr(Ast *type) {
             // only one type
             Ast *ptype = get_child(get_child(type, 0), 0);
             Ast *copy = create_ast(ptype->type, ptype->assoc_token);
+
+            destroy_ast(type);
+            free(type);
+            type = 0;
+
             type = copy;
         } else {
             destr = create_ast(DESTR_DECL, 0);
@@ -289,8 +294,8 @@ Ast *parse_match(Parser *parser) {
                 }
             }
             consume_token(parser,
-                ARROW,
-                "Expected '=>' to denote pattern behaviour.\n");
+                THIN_ARROW,
+                "Expected '->' to denote pattern behaviour.\n");
 
             append_list(&pattern->nodes, from_ptr(pseudo_return));
             append_list(&pseudo_return->nodes, from_ptr(ret_block));
@@ -359,6 +364,33 @@ Ast *parse_destr_decl(Parser *parser) {
     return literal_node;
 }
 
+static Ast *parse_product_type(Parser *parser) {
+    if (!consume_token(parser,
+            LPAREN,
+            "Cannot parse product type not beginning with paren\n")) {
+        return 0;
+    }
+    Ast *expr = create_ast(PRODUCT_TYPE, previous_token(parser));
+    while (peek_token(parser, 1)->type != RPAREN) {
+        append_list(&expr->nodes, from_ptr(parse_type(parser)));
+        if (peek_token(parser, 1)->type == COMMA)
+            consume_token(parser,
+                COMMA,
+                "Expected ',' in between tuple elements.\n");
+        else if (peek_token(parser, 1)->type == TEOF) {
+            error(peek_token(parser, 1)->line,
+                UNCLOSED_TUPLE,
+                "Tuple type missing closing ')'\n");
+            *parser->enc_err = 1;
+            synchronize(parser);
+            destroy_ast(expr);
+            return 0;
+        }
+    }
+    consume_token(parser, RPAREN, "Panic...");
+    return expr;
+}
+
 Ast *parse_type(Parser *parser) {
     Ast *expr = 0;
     if (match_token(parser, IDENT)) {
@@ -369,25 +401,8 @@ Ast *parse_type(Parser *parser) {
         }
     } else if (match_token(parser, UNDERSCORE)) {
         expr = create_ast(WILDCARD, previous_token(parser));
-    } else if (match_token(parser, LPAREN)) {
-        expr = create_ast(PRODUCT_TYPE, previous_token(parser));
-        while (peek_token(parser, 1)->type != RPAREN) {
-            append_list(&expr->nodes, from_ptr(parse_type(parser)));
-            if (peek_token(parser, 1)->type == COMMA)
-                consume_token(parser,
-                    COMMA,
-                    "Expected ',' in between tuple elements.\n");
-            else if (peek_token(parser, 1)->type == TEOF) {
-                error(peek_token(parser, 1)->line,
-                    UNCLOSED_TUPLE,
-                    "Tuple type missing closing ')'\n");
-                *parser->enc_err = 1;
-                synchronize(parser);
-                destroy_ast(expr);
-                return 0;
-            }
-        }
-        consume_token(parser, RPAREN, "Panic...");
+    } else if (peek_token(parser, 1)->type == LPAREN) {
+        expr = parse_product_type(parser);
     } else {
         int lineno = peek_token(parser, 1)->line;
         error(lineno, UNEXPECTED_TOKEN, "Expected type identifier.\n");
@@ -405,6 +420,7 @@ Ast *parse_type(Parser *parser) {
         expr = sum_type;
     }
 
+    // Lambda Type
     if (match_token(parser, ARROW)) {
         Ast *lambda_type = create_ast(LAMBDA_TYPE, previous_token(parser));
         append_list(&lambda_type->nodes, from_ptr(expr));
@@ -454,7 +470,7 @@ Ast *parse_lambda(Parser *parser) {
         Ast *block = create_ast(BLOCK, previous_token(parser));
         append_list(&lambda->nodes, from_ptr(block));
 
-        Ast *type = parse_type(parser);
+        Ast *type = parse_product_type(parser);
         if (type->nodes.length == 0 || type->type == PRODUCT_TYPE) {
             append_list(&block->nodes, from_ptr(type_to_destr(type)));
         } else {

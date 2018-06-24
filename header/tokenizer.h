@@ -30,6 +30,7 @@
     code(LT) \
     code(LTE) \
     code(PIPE) \
+    code(THIN_ARROW) \
     code(ARROW) \
     code(IDENT) \
     code(STR) \
