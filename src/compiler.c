@@ -361,7 +361,8 @@ void compile_destr_decl(Compiler *c, Ast *code) {
         Ast *child = get_child(code, i);
         if (child->type == TYPE ||
                 child->type == SUM_TYPE ||
-                child->type == PRODUCT_TYPE) {
+                child->type == PRODUCT_TYPE ||
+                child->type == LAMBDA_TYPE) {
             tuple_type = compile_type(c, child);
             if (!tuple_type) return;
         } else {

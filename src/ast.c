@@ -131,7 +131,7 @@ static Ast *record_type_to_destr(Ast *type) {
         } else if (get_child(child, 0)->type == PRODUCT_TYPE) {
             append_list(&lit->nodes,
                 from_ptr(record_type_to_destr(get_child(child, 0))));
-        } else if (get_child(child, 0)->type == TYPE) {
+        } else {
             append_list(&lit->nodes,
                 from_ptr(create_ast(VARIABLE, child->assoc_token)));
         }
