@@ -79,6 +79,9 @@ void compile(Compiler *c, Ast *code) {
     case DESTR_DECL:
         compile_destr_decl(c, code);
         break;
+    case ASSIGN:
+        compile_assign(c, code);
+        break;
     case BLOCK:
         compile_block(c, code);
         break;
@@ -329,7 +332,7 @@ void compile_decl(Compiler *c, Ast *code) {
         *c->enc_err = 1;
         return;
     }
-    create_symbol(&c->env, sym, type, loc, has_assignment, !local);
+    create_symbol(&c->env, sym, type, loc, 0, has_assignment, !local);
 
     if (!local) {
         append_list(&c->instr, from_double(GSTORE));
@@ -470,13 +473,19 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
             *c->enc_err = 1;
             return;
         }
-        create_symbol(&c->env, sym, slot_type, loc, has_assignment, !local);
+        create_symbol(&c->env, sym, slot_type, loc, 0, has_assignment, !local);
 
         if (!local) {
             append_list(&c->instr, from_double(GSTORE));
             append_list(&c->instr, from_double(loc));
         }
     }
+}
+
+void compile_assign(Compiler *c, Ast *code) {
+    const char *symbol = code->assoc_token->lexeme;
+    const Symbol *sym = find_symbol(c, symbol);
+    if (sym->assigned)
 }
 
 static char *construct_sum_type_name(const List *types) {
