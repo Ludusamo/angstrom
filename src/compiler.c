@@ -329,7 +329,7 @@ void compile_decl(Compiler *c, Ast *code) {
         *c->enc_err = 1;
         return;
     }
-    create_symbol(&c->env, sym, type, loc, !local);
+    create_symbol(&c->env, sym, type, loc, has_assignment, !local);
 
     if (!local) {
         append_list(&c->instr, from_double(GSTORE));
@@ -470,7 +470,7 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
             *c->enc_err = 1;
             return;
         }
-        create_symbol(&c->env, sym, slot_type, loc, !local);
+        create_symbol(&c->env, sym, slot_type, loc, has_assignment, !local);
 
         if (!local) {
             append_list(&c->instr, from_double(GSTORE));
