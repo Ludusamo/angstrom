@@ -8,6 +8,7 @@
     code(STACK_OVERFLOW) \
     code(STACK_UNDERFLOW) \
     code(UNDECLARED_VARIABLE) \
+    code(IMMUTABLE_VARIABLE) \
     code(NAME_COLLISION) \
     code(UNKNOWN_TYPE) \
     code(TYPE_ERROR) \

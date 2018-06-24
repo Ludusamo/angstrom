@@ -55,7 +55,7 @@ void compile_match(Compiler *c, Ast *code);
 
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value);
 
-const Symbol *find_symbol(const Compiler *c, const char *sym);
+Symbol *find_symbol(const Compiler *c, const char *sym);
 Ang_Type *find_type(const Compiler *c, const char *sym);
 size_t num_local(const Compiler *c);
 size_t num_types(const Compiler *c);
