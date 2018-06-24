@@ -25,6 +25,7 @@ const char *ast_type_to_str(Ast_Type t) {
 
 void print_ast(const Ast *ast, int depth) {
     if (!ast) return;
+    printf("%*s%s\n", depth * 4, "", ast_type_to_str(ast->type));
     for (size_t i = 0; i < ast->nodes.length; i++) {
         print_ast((Ast *) get_ptr(access_list(&ast->nodes, i)), depth + 1);
     }
@@ -402,6 +403,13 @@ Ast *parse_type(Parser *parser) {
         append_list(&sum_type->nodes, from_ptr(expr));
         append_list(&sum_type->nodes, from_ptr(parse_type(parser)));
         expr = sum_type;
+    }
+
+    if (match_token(parser, ARROW)) {
+        Ast *lambda_type = create_ast(LAMBDA_TYPE, previous_token(parser));
+        append_list(&lambda_type->nodes, from_ptr(expr));
+        append_list(&lambda_type->nodes, from_ptr(parse_type(parser)));
+        expr = lambda_type;
     }
     return expr;
 }

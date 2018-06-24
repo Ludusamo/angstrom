@@ -299,7 +299,8 @@ void compile_decl(Compiler *c, Ast *code) {
         Ast *child = get_child(code, i);
         if (child->type == TYPE ||
                 child->type == SUM_TYPE ||
-                child->type == PRODUCT_TYPE) {
+                child->type == PRODUCT_TYPE ||
+                child->type == LAMBDA_TYPE) {
             type = compile_type(c, child);
             if (!type) return;
         } else {
@@ -625,7 +626,7 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
         error(code->assoc_token->line, UNKNOWN_TYPE, type_sym);
         fprintf(stderr, "\n");
         *c->enc_err = 1;
-        return find_type(c, "Und");
+        return 0;
     }
     code->eval_type = type;
     return type;
