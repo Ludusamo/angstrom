@@ -30,12 +30,14 @@
     code(LT) \
     code(LTE) \
     code(PIPE) \
+    code(THIN_ARROW) \
     code(ARROW) \
     code(IDENT) \
     code(STR) \
     code(NUM) \
     code(VAR) \
     code(FN) \
+    code(MATCH) \
     code(TYPE_KEYWORD) \
     code(RETURN) \
     code(TEOF)

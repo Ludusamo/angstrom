@@ -65,12 +65,13 @@ int symbol_exists(const Ang_Env *env, const char *sym) {
     return access_hashtable(&env->symbols, sym).bits != nil_val.bits;
 }
 
-void create_symbol(Ang_Env *env, const char *sym, const Ang_Type *type, int loc, int global) {
+Symbol *create_symbol(Ang_Env *env, const char *sym, const Ang_Type *type, int loc, int global) {
     Symbol *symbol = calloc(sizeof(Symbol), 1);
     symbol->type = type;
     symbol->loc = loc;
     symbol->global = global;
     set_hashtable(&env->symbols, sym, from_ptr(symbol));
+    return symbol;
 }
 
 void destroy_symbol(Ang_Env *env, const char *sym) {

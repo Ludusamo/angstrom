@@ -20,6 +20,7 @@
     code(TYPE) \
     code(PRODUCT_TYPE) \
     code(SUM_TYPE) \
+    code(LAMBDA_TYPE) \
     code(ACCESSOR) \
     code(VARIABLE) \
     code(WILDCARD) \
@@ -27,7 +28,9 @@
     code(KEYVAL) \
     code(PLACEHOLD) \
     code(LAMBDA_LIT) \
-    code(LAMBDA_CALL)
+    code(LAMBDA_CALL) \
+    code(PATTERN_MATCH) \
+    code(PATTERN)
 
 #define DEFINE_ENUM_TYPE(type) type,
 typedef enum {
@@ -55,6 +58,7 @@ const char *ast_type_to_str(Ast_Type t);
 void print_ast(const Ast *ast, int depth);
 
 Ast *create_ast(Ast_Type t, const Token *assoc_token);
+Ast *copy_ast(Ast *ast);
 
 const Token *advance_token(Parser *parser);
 const Token *peek_token(const Parser *parser, int peek);
@@ -74,6 +78,7 @@ Ast *parse_multiplication(Parser *parser);
 Ast *parse_unary(Parser *parser);
 Ast *parse_type_decl(Parser *parser);
 Ast *parse_lambda_call(Parser *parser);
+Ast *parse_match(Parser *parser);
 Ast *parse_decl(Parser *parser);
 Ast *parse_destr_decl(Parser *parser);
 Ast *parse_type(Parser *parser);

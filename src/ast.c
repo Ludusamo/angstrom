@@ -2,6 +2,7 @@
 
 #include "error.h"
 #include "string.h"
+#include "utility.h"
 #include <stdio.h>
 
 void ctor_parser(Parser *p) {
@@ -36,6 +37,15 @@ Ast *create_ast(Ast_Type t, const Token *assoc_token) {
     ast->assoc_token = assoc_token;
     ctor_list(&ast->nodes);
     return ast;
+}
+
+Ast *copy_ast(Ast *ast) {
+    Ast *copy = create_ast(ast->type, ast->assoc_token);
+    for (size_t i = 0; i < ast->nodes.length; i++) {
+        append_list(&copy->nodes, from_ptr(copy_ast(get_child(ast, i))));
+    }
+    copy->eval_type = ast->eval_type;
+    return copy;
 }
 
 const Token *advance_token(Parser *parser) {
@@ -85,6 +95,8 @@ void synchronize(Parser *parser) {
         switch(peek_token(parser, 1)->type) {
         case VAR:
         case FN:
+        case MATCH:
+        case TEOF:
         case RBRACE:
             return;
         default:
@@ -102,6 +114,58 @@ void destroy_ast(Ast *ast) {
         free(node);
     }
     dtor_list(&ast->nodes);
+}
+
+static Ast *record_type_to_destr(Ast *type) {
+    Ast *lit = create_ast(LITERAL, type->assoc_token);
+    for (size_t i = 0; i < type->nodes.length; i++) {
+        Ast *child = get_child(type, i);
+        if (child->type == TYPE) {
+            char *slot_num = calloc(num_digits(i) + 1, sizeof(char));
+            sprintf(slot_num, "%lu", i);
+            append_list(&lit->nodes,
+                from_ptr(create_ast(VARIABLE, child->assoc_token)));
+        } else if (child->type == WILDCARD) {
+            append_list(&lit->nodes,
+                from_ptr(create_ast(WILDCARD, child->assoc_token)));
+        } else if (get_child(child, 0)->type == PRODUCT_TYPE) {
+            append_list(&lit->nodes,
+                from_ptr(record_type_to_destr(get_child(child, 0))));
+        } else {
+            append_list(&lit->nodes,
+                from_ptr(create_ast(VARIABLE, child->assoc_token)));
+        }
+    }
+    return lit;
+}
+
+static Ast *type_to_destr(Ast *type) {
+    Ast *destr = 0;
+    if (type->nodes.length != 0) {
+        if (type->nodes.length == 1) {
+            // Variable declaration
+            const Token *var_name = get_child(type, 0)->assoc_token;
+            destr = create_ast(VAR_DECL, var_name);
+
+            // only one type
+            Ast *ptype = get_child(get_child(type, 0), 0);
+            Ast *copy = create_ast(ptype->type, ptype->assoc_token);
+
+            destroy_ast(type);
+            free(type);
+            type = 0;
+
+            type = copy;
+        } else {
+            destr = create_ast(DESTR_DECL, 0);
+            append_list(&destr->nodes,
+                from_ptr(record_type_to_destr(type)));
+        }
+        Ast *placehold = create_ast(PLACEHOLD, 0);
+        append_list(&placehold->nodes, from_ptr(type));
+        append_list(&destr->nodes, from_ptr(placehold));
+    }
+    return destr;
 }
 
 Ast *parse_expression(Parser *parser) {
@@ -186,14 +250,60 @@ Ast *parse_type_decl(Parser *parser) {
 }
 
 Ast *parse_lambda_call(Parser *parser) {
-    Ast *expr = parse_decl(parser);
-    while (peek_token(parser, 1)->type == LPAREN) {
+    Ast *expr = parse_match(parser);
+    while (!at_end(parser) && peek_token(parser, 1)->type == LPAREN) {
         Ast *lambda_call = create_ast(LAMBDA_CALL, previous_token(parser));
         append_list(&lambda_call->nodes, from_ptr(expr));
-        append_list(&lambda_call->nodes, from_ptr(parse_decl(parser)));
+        append_list(&lambda_call->nodes, from_ptr(parse_match(parser)));
         expr = lambda_call;
     }
     return expr;
+}
+
+Ast *parse_match(Parser *parser) {
+    if (match_token(parser, MATCH)) {
+        Ast *match = create_ast(PATTERN_MATCH, previous_token(parser));
+        Ast *block = create_ast(BLOCK, 0);
+        append_list(&match->nodes, from_ptr(parse_expression(parser)));
+        append_list(&match->nodes, from_ptr(block));
+        while (match_token(parser, PIPE)) {
+
+            Ast *pattern = create_ast(PATTERN, previous_token(parser));
+            append_list(&block->nodes, from_ptr(pattern));
+
+            // Wrap the match code in a return
+            // so it can use block construct to jump out
+            Ast *pseudo_return = create_ast(RET_EXPR, 0);
+            Ast *ret_block = create_ast(BLOCK, 0);
+
+            if (match_token(parser, NUM) || match_token(parser, STR)) {
+                Ast *num_lit = create_ast(LITERAL, previous_token(parser));
+                append_list(&pattern->nodes, from_ptr(num_lit));
+            } else {
+                Ast *type = parse_type(parser);
+                if (!type) {
+                    return match;
+                } else if (type->type == WILDCARD) {
+                    append_list(&pattern->nodes,
+                        from_ptr(create_ast(WILDCARD, 0)));
+                } else if (type->type == PRODUCT_TYPE) {
+                    append_list(&pattern->nodes, from_ptr(copy_ast(type)));
+                    append_list(&ret_block->nodes, from_ptr(type_to_destr(type)));
+                } else {
+                    append_list(&pattern->nodes, from_ptr(type));
+                }
+            }
+            consume_token(parser,
+                THIN_ARROW,
+                "Expected '->' to denote pattern behaviour.\n");
+
+            append_list(&pattern->nodes, from_ptr(pseudo_return));
+            append_list(&pseudo_return->nodes, from_ptr(ret_block));
+            append_list(&ret_block->nodes, from_ptr(parse_expression(parser)));
+        }
+        return match;
+    }
+    return parse_decl(parser);
 }
 
 Ast *parse_decl(Parser *parser) {
@@ -254,6 +364,33 @@ Ast *parse_destr_decl(Parser *parser) {
     return literal_node;
 }
 
+static Ast *parse_product_type(Parser *parser) {
+    if (!consume_token(parser,
+            LPAREN,
+            "Cannot parse product type not beginning with paren\n")) {
+        return 0;
+    }
+    Ast *expr = create_ast(PRODUCT_TYPE, previous_token(parser));
+    while (peek_token(parser, 1)->type != RPAREN) {
+        append_list(&expr->nodes, from_ptr(parse_type(parser)));
+        if (peek_token(parser, 1)->type == COMMA)
+            consume_token(parser,
+                COMMA,
+                "Expected ',' in between tuple elements.\n");
+        else if (peek_token(parser, 1)->type == TEOF) {
+            error(peek_token(parser, 1)->line,
+                UNCLOSED_TUPLE,
+                "Tuple type missing closing ')'\n");
+            *parser->enc_err = 1;
+            synchronize(parser);
+            destroy_ast(expr);
+            return 0;
+        }
+    }
+    consume_token(parser, RPAREN, "Panic...");
+    return expr;
+}
+
 Ast *parse_type(Parser *parser) {
     Ast *expr = 0;
     if (match_token(parser, IDENT)) {
@@ -262,25 +399,10 @@ Ast *parse_type(Parser *parser) {
             expr->type = KEYVAL;
             append_list(&expr->nodes, from_ptr(parse_type(parser)));
         }
-    } else if (match_token(parser, LPAREN)) {
-        expr = create_ast(PRODUCT_TYPE, previous_token(parser));
-        while (peek_token(parser, 1)->type != RPAREN) {
-            append_list(&expr->nodes, from_ptr(parse_type(parser)));
-            if (peek_token(parser, 1)->type == COMMA)
-                consume_token(parser,
-                    COMMA,
-                    "Expected ',' in between tuple elements.\n");
-            else if (peek_token(parser, 1)->type == TEOF) {
-                error(peek_token(parser, 1)->line,
-                    UNCLOSED_TUPLE,
-                    "Tuple type missing closing ')'\n");
-                *parser->enc_err = 1;
-                synchronize(parser);
-                destroy_ast(expr);
-                return 0;
-            }
-        }
-        consume_token(parser, RPAREN, "Panic...");
+    } else if (match_token(parser, UNDERSCORE)) {
+        expr = create_ast(WILDCARD, previous_token(parser));
+    } else if (peek_token(parser, 1)->type == LPAREN) {
+        expr = parse_product_type(parser);
     } else {
         int lineno = peek_token(parser, 1)->line;
         error(lineno, UNEXPECTED_TOKEN, "Expected type identifier.\n");
@@ -297,9 +419,16 @@ Ast *parse_type(Parser *parser) {
         append_list(&sum_type->nodes, from_ptr(parse_type(parser)));
         expr = sum_type;
     }
+
+    // Lambda Type
+    if (match_token(parser, ARROW)) {
+        Ast *lambda_type = create_ast(LAMBDA_TYPE, previous_token(parser));
+        append_list(&lambda_type->nodes, from_ptr(expr));
+        append_list(&lambda_type->nodes, from_ptr(parse_type(parser)));
+        expr = lambda_type;
+    }
     return expr;
 }
-
 
 Ast *parse_block(Parser *parser) {
     if (match_token(parser, LBRACE)) {
@@ -333,30 +462,6 @@ Ast *parse_return(Parser *parser) {
     return parse_lambda(parser);
 }
 
-static Ast *record_type_to_destr(Parser *parser, Ast *type) {
-    Ast *lit = create_ast(LITERAL, type->assoc_token);
-    for (size_t i = 0; i < type->nodes.length; i++) {
-        Ast *child = get_child(type, i);
-        if (get_child(child, 0)->type == PRODUCT_TYPE) {
-            append_list(&lit->nodes,
-                from_ptr(record_type_to_destr(parser, get_child(child, 0))));
-        } else if (get_child(child, 0)->type == TYPE) {
-            printf("%s\n", child->assoc_token->lexeme);
-            append_list(&lit->nodes,
-                from_ptr(create_ast(VARIABLE, child->assoc_token)));
-        } else {
-            error(peek_token(parser, 1)->line,
-                TYPE_ERROR,
-                "Must supply product type to lambda.\n");
-            *parser->enc_err = 1;
-            synchronize(parser);
-            destroy_ast(lit);
-            return 0;
-        }
-    }
-    return lit;
-}
-
 Ast *parse_lambda(Parser *parser) {
     if (match_token(parser, FN)) {
         Ast *lambda = create_ast(LAMBDA_LIT, previous_token(parser));
@@ -365,34 +470,9 @@ Ast *parse_lambda(Parser *parser) {
         Ast *block = create_ast(BLOCK, previous_token(parser));
         append_list(&lambda->nodes, from_ptr(block));
 
-        Ast *type = parse_type(parser);
+        Ast *type = parse_product_type(parser);
         if (type->nodes.length == 0 || type->type == PRODUCT_TYPE) {
-            if (type->nodes.length == 0) {
-                destroy_ast(type);
-                free(type);
-            } else {
-                if (type->nodes.length == 1) {
-                    // Variable declaration
-                    const Token *var_name = get_child(type, 0)->assoc_token;
-                    append_list(&block->nodes,
-                        from_ptr(create_ast(VAR_DECL, var_name)));
-
-                    // only one type
-                    Ast *ptype = get_child(get_child(type, 0), 0);
-                    Ast *copy = create_ast(ptype->type, ptype->assoc_token);
-                    destroy_ast(type);
-                    free(type);
-                    type = copy;
-                } else {
-                    Ast *destr = create_ast(DESTR_DECL, 0);
-                    append_list(&block->nodes, from_ptr(destr));
-                    append_list(&destr->nodes,
-                        from_ptr(record_type_to_destr(parser, type)));
-                }
-                Ast *placehold = create_ast(PLACEHOLD, 0);
-                append_list(&placehold->nodes, from_ptr(type));
-                append_list(&get_child(block, 0)->nodes, from_ptr(placehold));
-            }
+            append_list(&block->nodes, from_ptr(type_to_destr(type)));
         } else {
             error(peek_token(parser, 1)->line,
                 TYPE_ERROR,
@@ -402,6 +482,7 @@ Ast *parse_lambda(Parser *parser) {
             destroy_ast(lambda);
             return 0;
         }
+
         if (match_token(parser, ARROW)) {
             append_list(&block->nodes, from_ptr(parse_expression(parser)));
         } else {
@@ -460,8 +541,11 @@ Ast *parse_primary(Parser *parser) {
         return expr;
     }
 
-    int lineno = peek_token(parser, 1)->line;
-    error(lineno, UNEXPECTED_TOKEN, "Encountered unknown token.\n");
+    const Token *t = peek_token(parser, 1);
+    int lineno = t->line;
+    char error_msg[32 + strlen(t->lexeme)];
+    sprintf(error_msg, "Encountered unexpected token %s.\n", t->lexeme);
+    error(lineno, UNEXPECTED_TOKEN, error_msg);
     *parser->enc_err = 1;
     synchronize(parser);
     return 0;

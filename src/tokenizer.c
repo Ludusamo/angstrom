@@ -109,6 +109,7 @@ void populate_keywords(Hashtable *keywords) {
     set_hashtable(keywords, "_", from_double(UNDERSCORE));
     set_hashtable(keywords, "type", from_double(TYPE_KEYWORD));
     set_hashtable(keywords, "return", from_double(RETURN));
+    set_hashtable(keywords, "match", from_double(MATCH));
 }
 
 const Token *last_scanned_token(const List *tokens) {
@@ -140,7 +141,13 @@ int tokenize(List *tokens, const char *src, const char *src_name) {
                 nil_val);
             break;
         case '.': add_token(tokens, &scan, DOT, nil_val); break;
-        case '-': add_token(tokens, &scan, MINUS, nil_val); break;
+        case '-': 
+            if (match(&scan, '>')) {
+                add_token(tokens, &scan, THIN_ARROW, nil_val);
+            } else {
+                add_token(tokens, &scan, MINUS, nil_val);
+            }
+            break;
         case '+': add_token(tokens, &scan, PLUS, nil_val); break;
         case '/': add_token(tokens, &scan, SLASH, nil_val); break;
         case '*': add_token(tokens, &scan, STAR, nil_val); break;

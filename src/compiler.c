@@ -45,8 +45,11 @@ void compile_code(Compiler *c, const char *code, const char *src_name) {
 void compile(Compiler *c, Ast *code) {
     switch (code->type) {
     case PROG:
-        for (int i = 0; i < code->nodes.length; i++)
+        for (int i = 0; i < code->nodes.length; i++) {
             compile(c, get_child(code, i));
+            if (i + 1 != code->nodes.length)
+                append_list(&c->instr, from_double(POP));
+        }
         break;
     case ADD_OP:
     case MUL_OP:
@@ -87,6 +90,12 @@ void compile(Compiler *c, Ast *code) {
         break;
     case PLACEHOLD:
         compile_placeholder(c, code);
+        break;
+    case PATTERN_MATCH:
+        compile_match(c, code);
+        break;
+    case PATTERN:
+        compile_pattern(c, code);
         break;
     case RET_EXPR:
         compile_return(c, code);
@@ -168,7 +177,8 @@ void compile_literal(Compiler *c, Ast *code) {
             || code->assoc_token->type == LPAREN) {
         int is_record = get_child(code, 0)->type == KEYVAL;
         for (int i = code->nodes.length - 1; i >= 0; i--) {
-            if (is_record && get_child(code, i)->type != KEYVAL) {
+            if (is_record && (get_child(code, i)->type != KEYVAL
+                    && get_child(code, i)->type != WILDCARD)) {
                 error(code->assoc_token->line,
                     INCOMPLETE_RECORD,
                     "Record type needs all members to be key value pairs.\n");
@@ -182,6 +192,11 @@ void compile_literal(Compiler *c, Ast *code) {
         List slots;
         ctor_list(&slots);
         for (size_t i = 0; i < code->nodes.length; i++) {
+            if (code->type == WILDCARD) {
+                append_list(&types, from_ptr((void *) find_type(c, "Any")));
+                append_list(&slots, from_ptr((void *) code->assoc_token->lexeme));
+                continue;
+            }
             const Ang_Type *child_type = get_child(code, i)->eval_type;
             append_list(&types, from_ptr((void *) child_type));
             if (is_record) {
@@ -284,7 +299,8 @@ void compile_decl(Compiler *c, Ast *code) {
         Ast *child = get_child(code, i);
         if (child->type == TYPE ||
                 child->type == SUM_TYPE ||
-                child->type == PRODUCT_TYPE) {
+                child->type == PRODUCT_TYPE ||
+                child->type == LAMBDA_TYPE) {
             type = compile_type(c, child);
             if (!type) return;
         } else {
@@ -345,7 +361,8 @@ void compile_destr_decl(Compiler *c, Ast *code) {
         Ast *child = get_child(code, i);
         if (child->type == TYPE ||
                 child->type == SUM_TYPE ||
-                child->type == PRODUCT_TYPE) {
+                child->type == PRODUCT_TYPE ||
+                child->type == LAMBDA_TYPE) {
             tuple_type = compile_type(c, child);
             if (!tuple_type) return;
         } else {
@@ -562,7 +579,8 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
 
             // Populating slots with slot number
             if (is_record) {
-                if (get_child(code, i)->type != KEYVAL) {
+                if (get_child(code, i)->type != KEYVAL
+                        && get_child(code, i)->type != WILDCARD) {
                     error(code->assoc_token->line,
                         INCOMPLETE_RECORD,
                         "Record type needs all members to be key value pairs.\n");
@@ -601,13 +619,20 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
         dtor_list(&types);
         code->eval_type = sum_type;
         return sum_type;
+    } else if (code->type == LAMBDA_TYPE) {
+        Ang_Type *lhs = compile_type(c, get_child(code, 0));
+        Ang_Type *rhs = compile_type(c, get_child(code, 1));
+        Ang_Type *lambda_type = get_lambda_type(c, lhs, rhs);
+        return lambda_type;
+    } else if (code->type == WILDCARD) {
+        type_sym = "Any";
     }
     Ang_Type *type = find_type(c, type_sym);
     if (!type) {
         error(code->assoc_token->line, UNKNOWN_TYPE, type_sym);
         fprintf(stderr, "\n");
         *c->enc_err = 1;
-        return find_type(c, "Und");
+        return 0;
     }
     code->eval_type = type;
     return type;
@@ -693,6 +718,10 @@ void compile_block(Compiler *c, Ast *code) {
         // Is return or last statement
         if (child->type == RET_EXPR || i + 1 == code->nodes.length) {
             append_list(&return_types, from_ptr((void *) child->eval_type));
+        } else if (child->type == PATTERN) {
+            // For pattern matching the second child of a pattern is a return
+            Ast *ret = get_child(child, 1);
+            append_list(&return_types, from_ptr((void *) ret->eval_type));
         }
     }
 
@@ -784,6 +813,61 @@ void compile_placeholder(Compiler *c, Ast *code) {
     code->eval_type = compile_type(c, get_child(code, 0));
     append_list(&c->instr, from_double(LOAD_REG));
     append_list(&c->instr, from_double(A));
+}
+
+void compile_pattern(Compiler *c, Ast *code) {
+    Ast *lhs = get_child(code, 0);
+    Ast *rhs = get_child(code, 1);
+
+    append_list(&c->instr, from_double(LOAD_REG));
+    append_list(&c->instr, from_double(A));
+    if (lhs->type == LITERAL) {
+        compile(c, lhs);
+
+        if (lhs->eval_type->id == NUM_TYPE) {
+            append_list(&c->instr, from_double(NUM_EQ));
+        }
+    } else if (lhs->type == TYPE) {
+        append_list(&c->instr, from_double(CMP_TYPE));
+        append_list(&c->instr, from_ptr(compile_type(c, lhs)));
+    } else if (lhs->type != WILDCARD) {
+        append_list(&c->instr, from_double(CMP_STRUCT));
+        append_list(&c->instr, from_ptr(compile_type(c, lhs)));
+    }
+
+    if (lhs->type != WILDCARD) {
+        append_list(&c->instr, from_double(JNE));
+        append_list(&c->instr, nil_val);
+    }
+    int jmp_loc = c->instr.length - 1;
+
+    compile(c, rhs);
+
+    if (lhs->type != WILDCARD) {
+        set_list(&c->instr, jmp_loc, from_double(instr_count(c) + 1));
+    }
+
+    code->eval_type = rhs->eval_type;
+
+    // Set all return jump locations to here
+    //Value end_jmp = from_double(instr_count(c));
+    //for (size_t i = 0; i < c->jmp_locs.length; i++) {
+    //    int jmp_instr = access_list(&c->jmp_locs, i).as_int32;
+    //    set_list(&c->instr, jmp_instr, end_jmp);
+    //}
+}
+
+void compile_match(Compiler *c, Ast *code) {
+    Ast *expr = get_child(code, 0);
+    Ast *block = get_child(code, 1);
+
+    compile(c, expr);
+    append_list(&c->instr, from_double(STO_REG));
+    append_list(&c->instr, from_double(A));
+
+    compile_block(c, block);
+
+    code->eval_type = block->eval_type;
 }
 
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
