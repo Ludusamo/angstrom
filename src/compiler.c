@@ -79,6 +79,9 @@ void compile(Compiler *c, Ast *code) {
     case DESTR_DECL:
         compile_destr_decl(c, code);
         break;
+    case ASSIGN:
+        compile_assign(c, code);
+        break;
     case BLOCK:
         compile_block(c, code);
         break;
@@ -329,7 +332,7 @@ void compile_decl(Compiler *c, Ast *code) {
         *c->enc_err = 1;
         return;
     }
-    create_symbol(&c->env, sym, type, loc, !local);
+    create_symbol(&c->env, sym, type, loc, 0, has_assignment, !local);
 
     if (!local) {
         append_list(&c->instr, from_double(GSTORE));
@@ -470,13 +473,30 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
             *c->enc_err = 1;
             return;
         }
-        create_symbol(&c->env, sym, slot_type, loc, !local);
+        create_symbol(&c->env, sym, slot_type, loc, 0, has_assignment, !local);
 
         if (!local) {
             append_list(&c->instr, from_double(GSTORE));
             append_list(&c->instr, from_double(loc));
         }
     }
+}
+
+void compile_assign(Compiler *c, Ast *code) {
+    const char *symbol = code->assoc_token->lexeme;
+    Symbol *sym = find_symbol(c, symbol);
+    if (!sym->mut && sym->assigned) {
+        error(code->assoc_token->line,
+            IMMUTABLE_VARIABLE,
+            "Cannot assign to an immutable variable.\n");
+        *c->enc_err = 1;
+        return;
+    }
+    compile(c, get_child(code, 0));
+    sym->assigned = 1;
+    append_list(&c->instr, from_double(DUP));
+    append_list(&c->instr, from_double(sym->global ? GSTORE : STORE));
+    append_list(&c->instr, from_double(sym->loc));
 }
 
 static char *construct_sum_type_name(const List *types) {
@@ -893,7 +913,7 @@ void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
     }
 }
 
-const Symbol *find_symbol(const Compiler *c, const char *sym) {
+Symbol *find_symbol(const Compiler *c, const char *sym) {
     if (!c) return 0;
     Value symbol = access_hashtable(&c->env.symbols, sym);
     if (symbol.bits != nil_val.bits) {

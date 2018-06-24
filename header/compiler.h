@@ -34,6 +34,7 @@ void compile_keyval(Compiler *c, Ast *code);
 void compile_accessor(Compiler *c, Ast *code);
 void compile_type_decl(Compiler *c, Ast *code);
 void compile_decl(Compiler *c, Ast *code);
+void compile_assign(Compiler *c, Ast *code);
 void compile_return(Compiler *c, Ast *code);
 void compile_destr_decl(Compiler *c, Ast *code);
 void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const Ang_Type *ttype);
@@ -54,7 +55,7 @@ void compile_match(Compiler *c, Ast *code);
 
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value);
 
-const Symbol *find_symbol(const Compiler *c, const char *sym);
+Symbol *find_symbol(const Compiler *c, const char *sym);
 Ang_Type *find_type(const Compiler *c, const char *sym);
 size_t num_local(const Compiler *c);
 size_t num_types(const Compiler *c);

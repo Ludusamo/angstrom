@@ -537,6 +537,11 @@ Ast *parse_primary(Parser *parser) {
             //}
             return expr;
         }
+        if (match_token(parser, EQ)) {
+            expr->type = ASSIGN;
+            append_list(&expr->nodes, from_ptr(parse_expression(parser)));
+            return expr;
+        }
         expr = parse_accessor(parser, expr);
         return expr;
     }

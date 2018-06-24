@@ -17,6 +17,7 @@
     code(VAR_DECL) \
     code(TYPE_DECL) \
     code(DESTR_DECL) \
+    code(ASSIGN) \
     code(TYPE) \
     code(PRODUCT_TYPE) \
     code(SUM_TYPE) \
