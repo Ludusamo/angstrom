@@ -618,19 +618,11 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
         dtor_list(&types);
         code->eval_type = sum_type;
         return sum_type;
-    } else if (code->type == SUM_TYPE) {
-        List types;
-        ctor_list(&types);
-        Ast *buf = code;
-        do {
-            append_list(&types, from_ptr(compile_type(c, get_child(code, 0))));
-            buf = get_child(buf, 1);
-        } while (buf->type == SUM_TYPE);
-        append_list(&types, from_ptr(compile_type(c, get_child(code, 1))));
-        Ang_Type *sum_type = get_sum_type(c, &types);
-        dtor_list(&types);
-        code->eval_type = sum_type;
-        return sum_type;
+    } else if (code->type == LAMBDA_TYPE) {
+        Ang_Type *lhs = compile_type(c, get_child(code, 0));
+        Ang_Type *rhs = compile_type(c, get_child(code, 1));
+        Ang_Type *lambda_type = get_lambda_type(c, lhs, rhs);
+        return lambda_type;
     } else if (code->type == WILDCARD) {
         type_sym = "Any";
     }
