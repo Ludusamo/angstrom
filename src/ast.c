@@ -284,6 +284,8 @@ Ast *parse_match(Parser *parser) {
                 if (!type) {
                     return match;
                 } else if (type->type == WILDCARD) {
+                    destroy_ast(type);
+                    free(type);
                     append_list(&pattern->nodes,
                         from_ptr(create_ast(WILDCARD, 0)));
                 } else if (type->type == PRODUCT_TYPE) {
