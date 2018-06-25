@@ -6,4 +6,4 @@ fib = fn (n: Num) =>
         | 2 -> 1
         | _ -> fib(n - 1) + fib(n - 2)
 
-fib(5)
+fib(10)

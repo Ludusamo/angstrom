@@ -1,0 +1,7 @@
+var fact :: Num => Num
+fact = fn (n: Num) =>
+    match n
+        | 0 -> 1
+        | _ -> n * fact(n - 1)
+
+fact(10)

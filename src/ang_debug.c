@@ -14,19 +14,7 @@ void print_stack_trace(const Ang_VM *vm) {
     }
     fprintf(stderr, "%*s", lenOffset, "[ ");
     for (int i = 0; i < sp; i++) {
-        Value v = vm->mem.stack[i]->v;
-        const Ang_Type *t = vm->mem.stack[i]->type;
-        if (t->id == BOOL_TYPE) {
-            fprintf(stderr, "%s ", v.bits == true_val.bits
-                ? "true"
-                : "false");
-        } else if (is_double(v))
-            fprintf(stderr, "%.2lf ", v.as_double);
-        else if (is_ptr(v)) {
-            fprintf(stderr, "<%s> ", vm->mem.stack[i]->type->name);
-        }
-        else
-            fprintf(stderr, "%d ", v.as_int32);
+        print_ang_obj(vm->mem.stack[i]);
     }
     fprintf(stderr, "]\n");
 }
