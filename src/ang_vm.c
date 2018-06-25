@@ -216,7 +216,12 @@ void eval(Ang_VM *vm) {
         break;
     case CALL: {
         vm->mem.registers[A] = pop_stack(&vm->mem);
-        Lambda *l = get_ptr(pop_stack(&vm->mem)->v);
+        Value l_val = pop_stack(&vm->mem)->v;
+        if (l_val.bits == nil_val.bits) {
+            runtime_error(NON_LAMBDA_CALL, "Attempt to call uninitialized lambda\n");
+            return;
+        }
+        Lambda *l = get_ptr(l_val);
         int ip = l->ip;
         push_num_stack(vm, vm->mem.fp);
         push_num_stack(vm, vm->mem.ip);

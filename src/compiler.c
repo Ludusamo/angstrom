@@ -910,6 +910,9 @@ void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
         append_list(&c->instr, from_double(t->slot_types->length));
     } else if (t->cat == SUM) {
         push_default_value(c, get_ptr(access_list(t->slot_types, 0)), default_value);
+    } else if (t->cat == LAMBDA) {
+        append_list(&c->instr, from_double(PUSH));
+        append_list(&c->instr, nil_val);
     }
 }
 

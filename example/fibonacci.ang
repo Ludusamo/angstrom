@@ -1,9 +1,9 @@
-var fib0 = fn (func: Num => Num, n1: Num) =>
-    match n1
-        | 0 -> 1
+var fib :: Num => Num
+fib = fn (n: Num) =>
+    match n
+        | 0 -> 0
         | 1 -> 1
-        | _ -> func(func, n1 - 1) + func(func, n1 - 2)
+        | 2 -> 1
+        | _ -> fib(n - 1) + fib(n - 2)
 
-var fib = fn (n: Num) => fib0(fib0, n)
-
-fib(10)
+fib(5)
