@@ -23,7 +23,8 @@ void ctor_memory(Memory *mem, size_t gmem_size) {
 void dtor_memory(Memory *mem) {
     // Set stack pointer and gmem_size to 0 so all objects get collected
     mem->sp = 0;
-    mem->gmem_size = 0;
+    mem->global_size = 0;
+    for (int i = 0; i < NUM_REGISTERS; i++) mem->registers[i] = 0;
     gc(mem);
     free(mem->gmem);
     mem->gmem = 0;
@@ -48,23 +49,26 @@ void mark_all_objects(Memory *mem) {
     for (size_t i = 0; i < mem->global_size; i++) {
         mark_ang_obj(mem->gmem[i]);
     }
+    for (int i = 0; i < NUM_REGISTERS; i++) {
+        mark_ang_obj(mem->registers[i]);
+    }
 }
 
 void sweep_mem(Memory *mem) {
     Ang_Obj **obj = &mem->mem_head;
     while (*obj) {
-        if ((*obj)->type->cat != PRIMITIVE &&
-                (*obj)->type->cat != LAMBDA) { // Is a user defined type
-            List *tuple_val = get_ptr((*obj)->v);
-            dtor_list(tuple_val);
-            free(tuple_val);
-            tuple_val = 0;
-        } else if ((*obj)->type->cat == LAMBDA) {
-            Lambda *l = get_ptr((*obj)->v);
-            destroy_lambda(l);
-            free(l);
-        }
         if (!(*obj)->marked) {
+            if ((*obj)->type->cat != PRIMITIVE &&
+                    (*obj)->type->cat != LAMBDA) { // Is a user defined type
+                List *tuple_val = get_ptr((*obj)->v);
+                dtor_list(tuple_val);
+                free(tuple_val);
+                tuple_val = 0;
+            } else if ((*obj)->type->cat == LAMBDA) {
+                Lambda *l = get_ptr((*obj)->v);
+                destroy_lambda(l);
+                free(l);
+            }
             Ang_Obj *unreachable = *obj;
             *obj = unreachable->next;
             free(unreachable);

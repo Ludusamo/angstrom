@@ -265,5 +265,6 @@ void run_compiled_instructions(Ang_VM *vm, Compiler *c) {
 void run_code(Ang_VM *vm, const char *code, const char *src_name) {
     compile_code(&vm->compiler, code, src_name);
     if (vm->enc_err) return;
+    vm->mem.global_size = vm->compiler.env.symbols.size;
     while (vm->mem.ip < INSTR(vm).length) eval(vm);
 }
