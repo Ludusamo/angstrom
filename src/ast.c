@@ -401,6 +401,13 @@ Ast *parse_type(Parser *parser) {
             expr->type = KEYVAL;
             append_list(&expr->nodes, from_ptr(parse_type(parser)));
         }
+        if (match_token(parser, LPAREN)) {
+            expr->type = PARAMETRIC_TYPE;
+            do {
+                append_list(&expr->nodes, from_ptr(parse_type(parser)));
+            } while (match_token(parser, COMMA));
+            consume_token(parser, RPAREN, "Expected ')' after the end of a parametric type.");
+        }
     } else if (match_token(parser, UNDERSCORE)) {
         expr = create_ast(WILDCARD, previous_token(parser));
     } else if (peek_token(parser, 1)->type == LPAREN) {

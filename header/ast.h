@@ -19,6 +19,7 @@
     code(DESTR_DECL) \
     code(ASSIGN) \
     code(TYPE) \
+    code(PARAMETRIC_TYPE) \
     code(PRODUCT_TYPE) \
     code(SUM_TYPE) \
     code(LAMBDA_TYPE) \
