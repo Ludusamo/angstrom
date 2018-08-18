@@ -22,6 +22,7 @@
     code(PRODUCT_TYPE) \
     code(SUM_TYPE) \
     code(LAMBDA_TYPE) \
+    code(ARRAY_TYPE) \
     code(ACCESSOR) \
     code(VARIABLE) \
     code(WILDCARD) \

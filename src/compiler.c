@@ -309,6 +309,7 @@ void compile_decl(Compiler *c, Ast *code) {
         } else {
             has_assignment = 1;
             compile(c, child);
+            if (*c->enc_err) return;
         }
     }
     if (!has_assignment) {
