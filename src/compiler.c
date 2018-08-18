@@ -303,7 +303,8 @@ void compile_decl(Compiler *c, Ast *code) {
         if (child->type == TYPE ||
                 child->type == SUM_TYPE ||
                 child->type == PRODUCT_TYPE ||
-                child->type == LAMBDA_TYPE) {
+                child->type == LAMBDA_TYPE ||
+                child->type == ARRAY_TYPE) {
             type = compile_type(c, child);
             if (!type) return;
         } else {
@@ -645,6 +646,8 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
         Ang_Type *rhs = compile_type(c, get_child(code, 1));
         Ang_Type *lambda_type = get_lambda_type(c, lhs, rhs);
         return lambda_type;
+    } else if (code->type == ARRAY_TYPE) {
+        
     } else if (code->type == WILDCARD) {
         type_sym = "Any";
     }

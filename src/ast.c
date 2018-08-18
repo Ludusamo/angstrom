@@ -404,9 +404,9 @@ Ast *parse_type(Parser *parser) {
     } else if (match_token(parser, UNDERSCORE)) {
         expr = create_ast(WILDCARD, previous_token(parser));
     } else if (match_token(parser, LBRACK)) {
+        expr = create_ast(ARRAY_TYPE, previous_token(parser));
+        append_list(&expr->nodes, from_ptr(parse_type(parser)));
         if (!consume_token(parser, RBRACK, "Expected closing ']'.")) return 0;
-        expr = parse_type(parser);
-        expr->type = ARRAY_TYPE;
     } else if (peek_token(parser, 1)->type == LPAREN) {
         expr = parse_product_type(parser);
     } else {
