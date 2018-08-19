@@ -168,6 +168,14 @@ void eval(Ang_VM *vm) {
         push_stack(&vm->mem, obj);
         break;
     }
+    case CONS_ARR: {
+        Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
+        List *l = malloc(sizeof(List));
+        ctor_list(l);
+        obj->v = from_ptr(l);
+        push_stack(&vm->mem, obj);
+        break;
+    }
     case CONS_LAMBDA: {
         Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
         Lambda *l = malloc(sizeof(Lambda));

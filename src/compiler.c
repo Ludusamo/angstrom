@@ -586,6 +586,35 @@ static Ang_Type *get_lambda_type(
     return lambda_type;
 }
 
+static char *construct_array_type_name(Compiler *c, Ang_Type *contains) {
+    // [TYPE]
+    size_t name_size = 3 + strlen(contains->name);
+    char *type_name = calloc(name_size, sizeof(char));
+    type_name[0] = '[';
+    strcat(type_name, contains->name);
+    type_name[name_size - 2] = ']';
+    type_name[name_size - 1] = '\0';
+    return type_name;
+}
+
+static Ang_Type *get_array_type(Compiler *c, Ang_Type *contains) {
+    char *name = construct_array_type_name(c, contains);
+    Ang_Type *type = find_type(c, name);
+    if (!type) {
+        type = calloc(1, sizeof(Ang_Type));
+        ctor_ang_type(type, num_types(c), name, ARRAY, nil_val);
+        type->slots = calloc(1, sizeof(Hashtable));
+        type->slot_types = calloc(1, sizeof(List));
+        ctor_list(type->slot_types);
+        ctor_hashtable(type->slots);
+        append_list(type->slot_types, from_ptr(contains));
+        add_type(&get_root_compiler(c)->env, type);
+    } else {
+        free(name);
+    }
+    return type;
+}
+
 Ang_Type *compile_type(Compiler *c, Ast *code) {
     if (code->type == KEYVAL) return compile_type(c, get_child(code, 0));
     const char *type_sym = code->assoc_token->lexeme;
@@ -647,7 +676,9 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
         Ang_Type *lambda_type = get_lambda_type(c, lhs, rhs);
         return lambda_type;
     } else if (code->type == ARRAY_TYPE) {
-        
+        Ang_Type *contains = compile_type(c, get_child(code, 0));
+        Ang_Type *arr_type = get_array_type(c, contains);
+        return arr_type;
     } else if (code->type == WILDCARD) {
         type_sym = "Any";
     }
@@ -912,6 +943,11 @@ void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
         append_list(&c->instr, type_val);
         // Push the number of slots
         append_list(&c->instr, from_double(t->slot_types->length));
+    } else if (t->cat == ARRAY) {
+        append_list(&c->instr, from_double(CONS_ARR));
+        // Push on the type of the object
+        Value type_val = from_ptr((void *) t);
+        append_list(&c->instr, type_val);
     } else if (t->cat == SUM) {
         push_default_value(c, get_ptr(access_list(t->slot_types, 0)), default_value);
     } else if (t->cat == LAMBDA) {
