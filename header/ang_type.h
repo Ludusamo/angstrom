@@ -7,7 +7,8 @@ typedef enum {
     PRIMITIVE,
     SUM,
     PRODUCT,
-    LAMBDA
+    LAMBDA,
+    PARAMETRIC,
 } Type_Category;
 
 typedef struct {

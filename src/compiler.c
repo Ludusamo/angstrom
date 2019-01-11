@@ -303,7 +303,8 @@ void compile_decl(Compiler *c, Ast *code) {
         if (child->type == TYPE ||
                 child->type == SUM_TYPE ||
                 child->type == PRODUCT_TYPE ||
-                child->type == LAMBDA_TYPE) {
+                child->type == LAMBDA_TYPE ||
+                child->type == PARAMETRIC_TYPE) {
             type = compile_type(c, child);
             if (!type) return;
         } else {
@@ -644,6 +645,22 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
         Ang_Type *rhs = compile_type(c, get_child(code, 1));
         Ang_Type *lambda_type = get_lambda_type(c, lhs, rhs);
         return lambda_type;
+    } else if (code->type == PARAMETRIC_TYPE) {
+        Ang_Type *type = find_type(c, code->assoc_token->lexeme);
+        if (!type) {
+            char msg[255];
+            sprintf(msg, "Could not find parametric type <%s>.", code->assoc_token->lexeme);
+            error(code->assoc_token->line, TYPE_ERROR, msg);
+            fprintf(stderr, "\n");
+            *c->enc_err = 1;
+            return 0;
+        }
+        if (type->cat != PARAMETRIC) {
+            error(code->assoc_token->line, TYPE_ERROR, "Expected parametric type.");
+            fprintf(stderr, "\n");
+            *c->enc_err = 1;
+            return 0;
+        }
     } else if (code->type == WILDCARD) {
         type_sym = "Any";
     }
