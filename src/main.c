@@ -101,6 +101,7 @@ void run_repl() {
         if (!vm.enc_err) {
             Ang_Obj *result = pop_stack(&vm.mem);
             print_ang_obj(result);
+            fprintf(stderr, "\n");
         } else {
             vm.enc_err = 0;
         }

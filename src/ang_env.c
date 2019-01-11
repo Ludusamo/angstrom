@@ -21,8 +21,11 @@ void dtor_ang_env(Ang_Env *env) {
     foreach (type_iter) {
         Ang_Type *t =
             get_ptr(((Keyval*) (get_ptr(val_iter_hashtable(&type_iter))))->val);
-        if (!t->user_defined && 
-            (t->cat == PRODUCT || t->cat == SUM || t->cat == LAMBDA)) {
+        if (!t->user_defined &&
+            (t->cat == PRODUCT ||
+             t->cat == ARRAY ||
+             t->cat == SUM ||
+             t->cat == LAMBDA)) {
             free((void*) t->name);
 
             if (t->cat == PRODUCT) {
@@ -30,7 +33,8 @@ void dtor_ang_env(Ang_Env *env) {
                 dtor_list(default_tuple);
                 free(default_tuple);
                 default_tuple = 0;
-
+            }
+            if (t->cat == PRODUCT || t->cat == ARRAY) {
                 /* You only need to free slots and slot_types for tuples/sums
                  * because any aliased ones will just hold references to these
                  * base tuple/sum objects.
