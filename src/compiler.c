@@ -6,6 +6,7 @@
 #include "ang_primitives.h"
 #include "utility.h"
 #include "ang_mem.h"
+#include "parser.h"
 
 void ctor_compiler(Compiler *compiler) {
     ctor_list(&compiler->instr);
@@ -13,7 +14,6 @@ void ctor_compiler(Compiler *compiler) {
     compiler->parent = 0;
     ctor_list(&compiler->compiled_ast);
     ctor_list(&compiler->jmp_locs);
-    ctor_parser(&compiler->parser);
     compiler->parser.enc_err = compiler->enc_err;
 }
 
@@ -34,7 +34,7 @@ void compile_code(Compiler *c, const char *code, const char *src_name) {
     Ast *ast = parse(&c->parser, code, src_name);
     append_list(&c->compiled_ast, from_ptr(ast));
     // Don't know if this check should be tied to error checking
-    if (!ast || ast->nodes.length == 0) *c->enc_err = 1;
+    if (!ast) *c->enc_err = 1;
     if (*c->enc_err) return;
     #ifdef DEBUG
     print_ast(ast, 0);
@@ -44,67 +44,67 @@ void compile_code(Compiler *c, const char *code, const char *src_name) {
 
 void compile(Compiler *c, Ast *code) {
     switch (code->type) {
-    case PROG:
-        for (int i = 0; i < code->nodes.length; i++) {
+    case AST_PROG:
+        for (int i = 0; i < code->num_children; i++) {
             compile(c, get_child(code, i));
-            if (i + 1 != code->nodes.length)
+            if (i + 1 != code->num_children)
                 append_list(&c->instr, from_double(POP));
         }
         break;
-    case ADD_OP:
-    case MUL_OP:
+    case AST_ADD_OP:
+    case AST_MUL_OP:
         compile_binary_op(c, code);
         break;
-    case UNARY_OP:
+    case AST_UNARY_OP:
         compile_unary_op(c, code);
         break;
-    case LITERAL:
+    case AST_LITERAL:
         compile_literal(c, code);
         break;
-    case VARIABLE:
+    case AST_VARIABLE:
         compile_variable(c, code);
         break;
-    case KEYVAL:
+    case AST_KEYVAL:
         compile_keyval(c, code);
         break;
-    case ACCESSOR:
+    case AST_ACCESSOR:
         compile_accessor(c, code);
         break;
-    case TYPE_DECL:
+    case AST_TYPE_DECL:
         compile_type_decl(c, code);
         break;
-    case VAR_DECL:
+    case AST_VAR_DECL:
         compile_decl(c, code);
         break;
-    case DESTR_DECL:
+    case AST_DESTR_DECL:
         compile_destr_decl(c, code);
         break;
-    case ASSIGN:
+    case AST_ASSIGN:
         compile_assign(c, code);
         break;
-    case BLOCK:
+    case AST_BLOCK:
         compile_block(c, code);
         break;
-    case LAMBDA_LIT:
+    case AST_LAMBDA_LIT:
         compile_lambda(c, code);
         break;
-    case LAMBDA_CALL:
+    case AST_LAMBDA_CALL:
         compile_lambda_call(c, code);
         break;
-    case PLACEHOLD:
+    case AST_PLACEHOLD:
         compile_placeholder(c, code);
         break;
-    case PATTERN_MATCH:
+    case AST_PATTERN_MATCH:
         compile_match(c, code);
         break;
-    case PATTERN:
+    case AST_PATTERN:
         compile_pattern(c, code);
         break;
-    case RET_EXPR:
+    case AST_RET_EXPR:
         compile_return(c, code);
         break;
     default:
-        error(code->assoc_token->line, UNKNOWN_AST, ast_type_to_str(code->type));
+        error(code->assoc_token.line, UNKNOWN_AST, ast_type_to_str(code->type));
         fprintf(stderr, "\n");
         *c->enc_err = 1;
         return;
@@ -112,10 +112,10 @@ void compile(Compiler *c, Ast *code) {
 }
 
 void compile_unary_op(Compiler *c, Ast *code) {
-    switch (code->assoc_token->type) {
-    case MINUS:
-        if (get_child(code, 0)->eval_type->id != NUM) {
-            error(code->assoc_token->line,
+    switch (code->assoc_token.type) {
+    case TOKEN_MINUS:
+        if (get_child(code, 0)->eval_type->id != NUM_TYPE) {
+            error(code->assoc_token.line,
                     TYPE_ERROR,
                     "Cannot do unary '-' operations on non-numbers.\n");
             *c->enc_err = 1;
@@ -139,24 +139,24 @@ void compile_binary_op(Compiler *c, Ast *code) {
 
     code->eval_type = find_type(c, "Num");
     if (lhs->eval_type->id != NUM_TYPE || rhs->eval_type->id != NUM_TYPE) {
-        error(code->assoc_token->line,
+        error(code->assoc_token.line,
                 TYPE_ERROR,
                 "Cannot do binary operations on non-numbers.\n");
         *c->enc_err = 1;
         return;
     }
 
-    switch (code->assoc_token->type) {
-    case PLUS:
+    switch (code->assoc_token.type) {
+    case TOKEN_PLUS:
         append_list(&c->instr, from_double(ADDF));
         break;
-    case MINUS:
+    case TOKEN_MINUS:
         append_list(&c->instr, from_double(SUBF));
         break;
-    case STAR:
+    case TOKEN_STAR:
         append_list(&c->instr, from_double(MULF));
         break;
-    case SLASH:
+    case TOKEN_SLASH:
         append_list(&c->instr, from_double(DIVF));
         break;
     default:
@@ -169,20 +169,21 @@ void compile_grouping(Compiler *c, Ast *code) {
 }
 
 void compile_literal(Compiler *c, Ast *code) {
-    Value literal = code->assoc_token->literal;
-    if (code->assoc_token->type == NUM) {
+    Value literal = code->assoc_token.literal;
+    if (code->assoc_token.type == TOKEN_NUM) {
         code->eval_type = find_type(c, "Num");
         append_list(&c->instr, from_double(PUSH));
         append_list(&c->instr, literal);
-    } else if (code->assoc_token->type == STR) {
+    } else if (code->assoc_token.type == TOKEN_STR) {
         code->eval_type = find_type(c, "String");
-    } else if ((code->nodes.length > 0 && get_child(code, 0)->type == KEYVAL)
-            || code->assoc_token->type == LPAREN) {
-        int is_record = get_child(code, 0)->type == KEYVAL;
-        for (int i = code->nodes.length - 1; i >= 0; i--) {
-            if (is_record && (get_child(code, i)->type != KEYVAL
-                    && get_child(code, i)->type != WILDCARD)) {
-                error(code->assoc_token->line,
+    } else if ((code->num_children > 0
+            && get_child(code, 0)->type == AST_KEYVAL)
+            || code->assoc_token.type == TOKEN_LPAREN) {
+        int is_record = get_child(code, 0)->type == AST_KEYVAL;
+        for (int i = code->num_children - 1; i >= 0; i--) {
+            if (is_record && (get_child(code, i)->type != AST_KEYVAL
+                    && get_child(code, i)->type != AST_WILDCARD)) {
+                error(code->assoc_token.line,
                     INCOMPLETE_RECORD,
                     "Record type needs all members to be key value pairs.\n");
                 *c->enc_err = 1;
@@ -194,16 +195,16 @@ void compile_literal(Compiler *c, Ast *code) {
         ctor_list(&types);
         List slots;
         ctor_list(&slots);
-        for (size_t i = 0; i < code->nodes.length; i++) {
-            if (code->type == WILDCARD) {
+        for (size_t i = 0; i < code->num_children; i++) {
+            if (code->type == AST_WILDCARD) {
                 append_list(&types, from_ptr((void *) find_type(c, "Any")));
-                append_list(&slots, from_ptr((void *) code->assoc_token->lexeme));
+                append_list(&slots, from_ptr((void *) code->assoc_token.lexeme));
                 continue;
             }
             const Ang_Type *child_type = get_child(code, i)->eval_type;
             append_list(&types, from_ptr((void *) child_type));
             if (is_record) {
-                const char *slot_name = get_child(code, i)->assoc_token->lexeme;
+                const char *slot_name = get_child(code, i)->assoc_token.lexeme;
                 append_list(&slots, from_ptr((char *) slot_name));
             } else {
                 // Populating slots with slot number
@@ -215,24 +216,24 @@ void compile_literal(Compiler *c, Ast *code) {
         code->eval_type = get_tuple_type(c, &slots, &types);
         dtor_list(&types);
         if (!is_record) {
-            for (size_t i = 0; i < code->nodes.length; i++) {
+            for (size_t i = 0; i < code->num_children; i++) {
                 free(get_ptr(access_list(&slots, i)));
             }
         }
         dtor_list(&slots);
         append_list(&c->instr, from_double(CONS_TUPLE));
         append_list(&c->instr, from_ptr((void *) code->eval_type));
-        append_list(&c->instr, from_double(code->nodes.length));
+        append_list(&c->instr, from_double(code->num_children));
     }
     //TODO: Handle Strings
 }
 
 void compile_variable(Compiler *c, Ast *code) {
-    const Symbol *sym = find_symbol(c, code->assoc_token->lexeme);
+    const Symbol *sym = find_symbol(c, code->assoc_token.lexeme);
     if (!sym) {
-        error(code->assoc_token->line,
+        error(code->assoc_token.line,
             UNDECLARED_VARIABLE,
-            code->assoc_token->lexeme);
+            code->assoc_token.lexeme);
         fprintf(stderr, "\n");
         *c->enc_err = 1;
         return;
@@ -250,13 +251,13 @@ void compile_keyval(Compiler *c, Ast *code) {
 void compile_accessor(Compiler *c, Ast *code) {
     compile(c, get_child(code, 0));
     const Ang_Type *type = get_child(code, 0)->eval_type;
-    const char *slot_name = get_child(code, 1)->assoc_token->lexeme;
+    const char *slot_name = get_child(code, 1)->assoc_token.lexeme;
     Value slot_num_val = nil_val;
     if (type->slots) slot_num_val = access_hashtable(type->slots, slot_name);
     if (slot_num_val.bits == nil_val.bits) {
         char error_msg[32 + strlen(type->name) + strlen(slot_name)];
         sprintf(error_msg, "Type <%s> does not have the slot %s.\n", type->name, slot_name);
-        error(code->assoc_token->line, INVALID_SLOT, error_msg);
+        error(code->assoc_token.line, INVALID_SLOT, error_msg);
         *c->enc_err = 1;
         return;
     }
@@ -269,10 +270,10 @@ void compile_accessor(Compiler *c, Ast *code) {
 }
 
 void compile_type_decl(Compiler *c, Ast *code) {
-    int has_default = code->nodes.length == 2;
+    int has_default = code->num_children == 2;
     const Ang_Type *type = compile_type(c, get_child(code, has_default ? 1 : 0));
     if (!type) return;
-    const char *type_name = code->assoc_token->lexeme;
+    const char *type_name = code->assoc_token.lexeme;
 
     // Set default value
     if (has_default) {
@@ -298,14 +299,14 @@ void compile_type_decl(Compiler *c, Ast *code) {
 void compile_decl(Compiler *c, Ast *code) {
     const Ang_Type *type = find_type(c, "Und");
     int has_assignment = 0;
-    for (size_t i = 0; i < code->nodes.length; i++) {
+    for (size_t i = 0; i < code->num_children; i++) {
         Ast *child = get_child(code, i);
-        if (child->type == TYPE ||
-                child->type == SUM_TYPE ||
-                child->type == PRODUCT_TYPE ||
-                child->type == LAMBDA_TYPE ||
-                child->type == PARAMETRIC_TYPE ||
-                child->type == ARRAY_TYPE) {
+        if (child->type == AST_TYPE ||
+                child->type == AST_SUM_TYPE ||
+                child->type == AST_PRODUCT_TYPE ||
+                child->type == AST_LAMBDA_TYPE ||
+                child->type == AST_PARAMETRIC_TYPE ||
+                child->type == AST_ARRAY_TYPE) {
             type = compile_type(c, child);
             if (!type) return;
         } else {
@@ -320,7 +321,7 @@ void compile_decl(Compiler *c, Ast *code) {
         if (type->id == UNDECLARED)
             type = get_child(code, 0)->eval_type;
         if (!type_equality(type, get_child(code, 0)->eval_type)) {
-            error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
+            error(code->assoc_token.line, TYPE_ERROR, "RHS type mismatch.\n");
             *c->enc_err = 1;
             return;
         }
@@ -328,9 +329,9 @@ void compile_decl(Compiler *c, Ast *code) {
     code->eval_type = type;
     int local = c->parent != 0; // If the variable is global or local
     int loc = local ? num_local(c) : c->env.symbols.size;
-    const char *sym = code->assoc_token->lexeme;
+    const char *sym = code->assoc_token.lexeme;
     if (symbol_exists(&c->env, sym)) {
-        error(code->assoc_token->line, NAME_COLLISION, sym);
+        error(code->assoc_token.line, NAME_COLLISION, sym);
         fprintf(stderr, "\n");
         *c->enc_err = 1;
         return;
@@ -347,7 +348,7 @@ void compile_decl(Compiler *c, Ast *code) {
 
 void compile_return(Compiler *c, Ast *code) {
     if (!c->parent) {
-        error(code->assoc_token->line,
+        error(code->assoc_token.line,
             NON_BLOCK_RETURN,
             "Cannot return outside of a block.\n");
         *c->enc_err = 1;
@@ -363,12 +364,12 @@ void compile_return(Compiler *c, Ast *code) {
 void compile_destr_decl(Compiler *c, Ast *code) {
     const Ang_Type *tuple_type = find_type(c, "Und");
     int has_assignment = 0;
-    for (size_t i = 1; i < code->nodes.length; i++) {
+    for (size_t i = 1; i < code->num_children; i++) {
         Ast *child = get_child(code, i);
-        if (child->type == TYPE ||
-                child->type == SUM_TYPE ||
-                child->type == PRODUCT_TYPE ||
-                child->type == LAMBDA_TYPE) {
+        if (child->type == AST_TYPE ||
+                child->type == AST_SUM_TYPE ||
+                child->type == AST_PRODUCT_TYPE ||
+                child->type == AST_LAMBDA_TYPE) {
             tuple_type = compile_type(c, child);
             if (!tuple_type) return;
         } else {
@@ -380,7 +381,7 @@ void compile_destr_decl(Compiler *c, Ast *code) {
         if (tuple_type->id == UNDECLARED)
             tuple_type = get_child(code, 1)->eval_type;
         if (!type_equality(tuple_type, get_child(code, 1)->eval_type)) {
-            error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
+            error(code->assoc_token.line, TYPE_ERROR, "RHS type mismatch.\n");
             *c->enc_err = 1;
         }
         append_list(&c->instr, from_double(STO_REG));
@@ -389,13 +390,13 @@ void compile_destr_decl(Compiler *c, Ast *code) {
     code->eval_type = tuple_type;
 
     if (tuple_type->cat == PRIMITIVE) {
-        error(code->assoc_token->line,
+        error(code->assoc_token.line,
             INVALID_DESTR,
             "Cannot destructure a primitive type.\n");
         *c->enc_err = 1;
         return;
     } else if (tuple_type->cat == SUM) {
-        error(code->assoc_token->line,
+        error(code->assoc_token.line,
             INVALID_DESTR,
             "Cannot destructure a sum type.\n");
         *c->enc_err = 1;
@@ -420,19 +421,19 @@ void compile_destr_decl(Compiler *c, Ast *code) {
 }
 
 void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const Ang_Type *ttype) {
-    if (lhs->nodes.length > ttype->slot_types->length) {
-        error(lhs->assoc_token->line,
+    if (lhs->num_children > ttype->slot_types->length) {
+        error(lhs->assoc_token.line,
             INSUFFICIENT_TUPLE,
             "Trying to destructure more slots than the tuple holds.\n");
         *c->enc_err = 1;
         return;
     }
     int local = c->parent != 0; // If the variables are global or local
-    for (size_t i = 0; i < lhs->nodes.length; i++) {
-        if (get_child(lhs, i)->type == WILDCARD) continue;
+    for (size_t i = 0; i < lhs->num_children; i++) {
+        if (get_child(lhs, i)->type == AST_WILDCARD) continue;
 
         // If trying to destructure inner tuple, recurse
-        if (get_child(lhs, i)->type == LITERAL) {
+        if (get_child(lhs, i)->type == AST_LITERAL) {
             // Move register A to B and pull out inner tuple
             if (has_assignment) {
                 append_list(&c->instr, from_double(MOV_REG));
@@ -458,7 +459,7 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
             continue;
         }
 
-        const char *sym = get_child(lhs, i)->assoc_token->lexeme;
+        const char *sym = get_child(lhs, i)->assoc_token.lexeme;
         const Ang_Type *slot_type =
             get_ptr(access_list(ttype->slot_types, i));
         if (!has_assignment) push_default_value(c, slot_type, slot_type->default_value);
@@ -472,7 +473,7 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
         int loc = local ? num_local(c) : c->env.symbols.size;
 
         if (symbol_exists(&c->env, sym)) {
-            error(lhs->assoc_token->line, NAME_COLLISION, sym);
+            error(lhs->assoc_token.line, NAME_COLLISION, sym);
             *c->enc_err = 1;
             return;
         }
@@ -486,10 +487,10 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
 }
 
 void compile_assign(Compiler *c, Ast *code) {
-    const char *symbol = code->assoc_token->lexeme;
+    const char *symbol = code->assoc_token.lexeme;
     Symbol *sym = find_symbol(c, symbol);
     if (!sym->mut && sym->assigned) {
-        error(code->assoc_token->line,
+        error(code->assoc_token.line,
             IMMUTABLE_VARIABLE,
             "Cannot assign to an immutable variable.\n");
         *c->enc_err = 1;
@@ -617,29 +618,29 @@ static Ang_Type *get_array_type(Compiler *c, Ang_Type *contains) {
 }
 
 Ang_Type *compile_type(Compiler *c, Ast *code) {
-    if (code->type == KEYVAL) return compile_type(c, get_child(code, 0));
-    const char *type_sym = code->assoc_token->lexeme;
-    if (code->type == PRODUCT_TYPE) {
-        int is_record = get_child(code, 0)->type == KEYVAL;
+    if (code->type == AST_KEYVAL) return compile_type(c, get_child(code, 0));
+    const char *type_sym = code->assoc_token.lexeme;
+    if (code->type == AST_PRODUCT_TYPE) {
+        int is_record = get_child(code, 0)->type == AST_KEYVAL;
         List types;
         ctor_list(&types);
         List slots;
         ctor_list(&slots);
-        for (size_t i = 0; i < code->nodes.length; i++) {
+        for (size_t i = 0; i < code->num_children; i++) {
             Ang_Type *child_type = compile_type(c, get_child(code, i));
             append_list(&types, from_ptr(child_type));
 
             // Populating slots with slot number
             if (is_record) {
-                if (get_child(code, i)->type != KEYVAL
-                        && get_child(code, i)->type != WILDCARD) {
-                    error(code->assoc_token->line,
+                if (get_child(code, i)->type != AST_KEYVAL
+                        && get_child(code, i)->type != AST_WILDCARD) {
+                    error(code->assoc_token.line,
                         INCOMPLETE_RECORD,
                         "Record type needs all members to be key value pairs.\n");
                     *c->enc_err = 1;
                     return 0;
                 }
-                const char *slot_name = get_child(code, i)->assoc_token->lexeme;
+                const char *slot_name = get_child(code, i)->assoc_token.lexeme;
                 append_list(&slots, from_ptr((char *) slot_name));
             } else {
                 char *slot_num = calloc(num_digits(i) + 1, sizeof(char));
@@ -651,57 +652,57 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
         Ang_Type *tuple_type = get_tuple_type(c, &slots, &types);
         dtor_list(&types);
         if (!is_record) {
-            for (size_t i = 0; i < code->nodes.length; i++) {
+            for (size_t i = 0; i < code->num_children; i++) {
                 free(get_ptr(access_list(&slots, i)));
             }
         }
         dtor_list(&slots);
         code->eval_type = tuple_type;
         return tuple_type;
-    } else if (code->type == SUM_TYPE) {
+    } else if (code->type == AST_SUM_TYPE) {
         List types;
         ctor_list(&types);
         Ast *buf = code;
         do {
             append_list(&types, from_ptr(compile_type(c, get_child(code, 0))));
             buf = get_child(buf, 1);
-        } while (buf->type == SUM_TYPE);
+        } while (buf->type == AST_SUM_TYPE);
         append_list(&types, from_ptr(compile_type(c, get_child(code, 1))));
         Ang_Type *sum_type = get_sum_type(c, &types);
         dtor_list(&types);
         code->eval_type = sum_type;
         return sum_type;
-    } else if (code->type == LAMBDA_TYPE) {
+    } else if (code->type == AST_LAMBDA_TYPE) {
         Ang_Type *lhs = compile_type(c, get_child(code, 0));
         Ang_Type *rhs = compile_type(c, get_child(code, 1));
         Ang_Type *lambda_type = get_lambda_type(c, lhs, rhs);
         return lambda_type;
-    } else if (code->type == PARAMETRIC_TYPE) {
-        Ang_Type *type = find_type(c, code->assoc_token->lexeme);
+    } else if (code->type == AST_PARAMETRIC_TYPE) {
+        Ang_Type *type = find_type(c, code->assoc_token.lexeme);
         if (!type) {
             char msg[255];
-            sprintf(msg, "Could not find parametric type <%s>.", code->assoc_token->lexeme);
-            error(code->assoc_token->line, TYPE_ERROR, msg);
+            sprintf(msg, "Could not find parametric type <%s>.", code->assoc_token.lexeme);
+            error(code->assoc_token.line, TYPE_ERROR, msg);
             fprintf(stderr, "\n");
             *c->enc_err = 1;
             return 0;
         }
         if (type->cat != PARAMETRIC) {
-            error(code->assoc_token->line, TYPE_ERROR, "Expected parametric type.");
+            error(code->assoc_token.line, TYPE_ERROR, "Expected parametric type.");
             fprintf(stderr, "\n");
             *c->enc_err = 1;
             return 0;
         }
-    } else if (code->type == ARRAY_TYPE) {
+    } else if (code->type == AST_ARRAY_TYPE) {
         Ang_Type *contains = compile_type(c, get_child(code, 0));
         Ang_Type *arr_type = get_array_type(c, contains);
         return arr_type;
-    } else if (code->type == WILDCARD) {
+    } else if (code->type == AST_WILDCARD) {
         type_sym = "Any";
     }
     Ang_Type *type = find_type(c, type_sym);
     if (!type) {
-        error(code->assoc_token->line, UNKNOWN_TYPE, type_sym);
+        error(code->assoc_token.line, UNKNOWN_TYPE, type_sym);
         fprintf(stderr, "\n");
         *c->enc_err = 1;
         return 0;
@@ -781,16 +782,16 @@ void compile_block(Compiler *c, Ast *code) {
     ctor_list(&return_types);
 
     // Compile all block expressions
-    for (size_t i = 0; i < code->nodes.length; i++) {
+    for (size_t i = 0; i < code->num_children; i++) {
         Ast *child = get_child(code, i);
         compile(&block, child);
-        if (i + 1 != code->nodes.length)
+        if (i + 1 != code->num_children)
             append_list(&block.instr, from_double(POP));
 
         // Is return or last statement
-        if (child->type == RET_EXPR || i + 1 == code->nodes.length) {
+        if (child->type == AST_RET_EXPR || i + 1 == code->num_children) {
             append_list(&return_types, from_ptr((void *) child->eval_type));
-        } else if (child->type == PATTERN) {
+        } else if (child->type == AST_PATTERN) {
             // For pattern matching the second child of a pattern is a return
             Ast *ret = get_child(child, 1);
             append_list(&return_types, from_ptr((void *) ret->eval_type));
@@ -821,7 +822,7 @@ void compile_block(Compiler *c, Ast *code) {
     if (return_types.length > 1) {
         code->eval_type = get_sum_type(c, &return_types);
     } else {
-        code->eval_type = get_child(code, code->nodes.length - 1)->eval_type;
+        code->eval_type = get_child(code, code->num_children - 1)->eval_type;
     }
     dtor_list(&return_types);
 
@@ -858,7 +859,7 @@ void compile_lambda_call(Compiler *c, Ast *code) {
 
     const Ang_Type *lambda_type = lambda->eval_type;
     if (!lambda_type || lambda_type->cat != LAMBDA) {
-        error(code->assoc_token->line,
+        error(code->assoc_token.line,
             NON_LAMBDA_CALL,
             "Cannot call a non-lambda.\n");
         *c->enc_err = 1;
@@ -871,7 +872,7 @@ void compile_lambda_call(Compiler *c, Ast *code) {
             "Lambda requires parameter of type %s. Received parameter of type %s.\n",
             lhs_type->name,
             param->eval_type->name);
-        error(code->assoc_token->line,
+        error(code->assoc_token.line,
             INVALID_LAMBDA_PARAM,
             error_msg);
         *c->enc_err = 1;
@@ -893,21 +894,21 @@ void compile_pattern(Compiler *c, Ast *code) {
 
     append_list(&c->instr, from_double(LOAD_REG));
     append_list(&c->instr, from_double(A));
-    if (lhs->type == LITERAL) {
+    if (lhs->type == AST_LITERAL) {
         compile(c, lhs);
 
         if (lhs->eval_type->id == NUM_TYPE) {
             append_list(&c->instr, from_double(NUM_EQ));
         }
-    } else if (lhs->type == TYPE) {
+    } else if (lhs->type == AST_TYPE) {
         append_list(&c->instr, from_double(CMP_TYPE));
         append_list(&c->instr, from_ptr(compile_type(c, lhs)));
-    } else if (lhs->type != WILDCARD) {
+    } else if (lhs->type != AST_WILDCARD) {
         append_list(&c->instr, from_double(CMP_STRUCT));
         append_list(&c->instr, from_ptr(compile_type(c, lhs)));
     }
 
-    if (lhs->type != WILDCARD) {
+    if (lhs->type != AST_WILDCARD) {
         append_list(&c->instr, from_double(JNE));
         append_list(&c->instr, nil_val);
     }
@@ -915,7 +916,7 @@ void compile_pattern(Compiler *c, Ast *code) {
 
     compile(c, rhs);
 
-    if (lhs->type != WILDCARD) {
+    if (lhs->type != AST_WILDCARD) {
         set_list(&c->instr, jmp_loc, from_double(instr_count(c) + 1));
     }
 

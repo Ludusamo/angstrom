@@ -40,17 +40,17 @@
     code(MATCH) \
     code(TYPE_KEYWORD) \
     code(RETURN) \
-    code(TEOF)
+    code(END)
 
-#define DEFINE_ENUM_TYPE(type) type,
+#define DEFINE_ENUM_TYPE(type) TOKEN_##type,
 typedef enum {
     TOKEN_TYPE_LIST(DEFINE_ENUM_TYPE)
-} Token_Type;
+} TokenType;
 #undef DEFINE_ENUM_TYPE
 
 typedef struct {
-    Token_Type type;
-    const char *lexeme;
+    TokenType type;
+    char *lexeme;
     Value literal;
     int line;
     const char *src_name;
@@ -63,23 +63,28 @@ typedef struct {
     int start;
     int current;
     const char *src_name;
+    Hashtable keywords;
 } Scanner;
 
-const char *token_type_to_str(Token_Type t);
+void ctor_scanner(Scanner *scanner, const char *src, const char *src_name);
+void dtor_scanner(Scanner *scanner);
+
+const char *token_type_to_str(TokenType t);
 void print_token(const Token *t);
-Value create_token_value(Token_Type type,
+Token create_token(const Scanner *scanner, TokenType type, const Value literal);
+Value create_token_value(TokenType type,
                          const Scanner *scanner,
                          const Value literal);
-const char *copy_cur_lexeme(const Scanner *scanner);
+char *copy_cur_lexeme(const Scanner *scanner);
 void add_token(List *t_list, const Scanner *scanner,
-               Token_Type t, const Value literal);
+               TokenType t, const Value literal);
 int match(Scanner *scanner, char t);
 char peek(const Scanner *scanner);
 char peek_next(const Scanner *scanner);
 Value string(Scanner *scanner);
 Value number(Scanner *scanner);
 void populate_keywords(Hashtable *keywords);
-int tokenize(List *tokens, const char *src, const char *src_name);
+Token scan_token(Scanner *scan);
 
 void destroy_tokens_from_n(List *tokens, size_t n);
 void destroy_tokens(List *tokens);
