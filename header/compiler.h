@@ -11,7 +11,6 @@ struct Compiler{
     List instr;
     int *enc_err;
 
-    Parser parser;
     List compiled_ast;
     Ang_Env env;
 

@@ -71,7 +71,7 @@ void dtor_scanner(Scanner *scanner);
 
 const char *token_type_to_str(TokenType t);
 void print_token(const Token *t);
-Token create_token(const Scanner *scanner, TokenType type, const Value literal);
+Token *create_token(const Scanner *scanner, TokenType type, const Value literal);
 Value create_token_value(TokenType type,
                          const Scanner *scanner,
                          const Value literal);
@@ -84,7 +84,8 @@ char peek_next(const Scanner *scanner);
 Value string(Scanner *scanner);
 Value number(Scanner *scanner);
 void populate_keywords(Hashtable *keywords);
-Token scan_token(Scanner *scan);
+Token *scan_token(Scanner *scan);
+Token *copy_token(const Token *token);
 
 void destroy_tokens_from_n(List *tokens, size_t n);
 void destroy_tokens(List *tokens);

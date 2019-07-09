@@ -32,16 +32,18 @@ void print_token(const Token *t) {
     printf("{ %s, %s, %d }\n", token_type_to_str(t->type), t->lexeme, t->line);
 }
 
-Token create_token(const Scanner *scanner,
+Token *create_token(const Scanner *scanner,
                    TokenType type,
                    const Value literal) {
-    return (Token) {
+    Token *tok = malloc(sizeof(Token));
+    *tok = (Token) {
         type,
         copy_cur_lexeme(scanner),
         literal,
         scanner->line,
         scanner->src_name
     };
+    return tok;
 }
 
 char *copy_cur_lexeme(const Scanner *scanner) {
@@ -116,9 +118,9 @@ void populate_keywords(Hashtable *keywords) {
     set_hashtable(keywords, "match", from_double(TOKEN_MATCH));
 }
 
-Token scan_token(Scanner *scan) {
-    scan->start = scan->current;
+Token *scan_token(Scanner *scan) {
     while (scan->current < scan->srclen) {
+        scan->start = scan->current;
         char c = scan->src[scan->current++];
         switch (c) {
         case '(': return create_token(scan, TOKEN_LPAREN, nil_val);
@@ -133,7 +135,7 @@ Token scan_token(Scanner *scan) {
                 match(scan, ':') ? TOKEN_COLON_COLON : TOKEN_COLON,
                 nil_val);
         case '.': return create_token(scan, TOKEN_DOT, nil_val);
-        case '-': 
+        case '-':
             if (match(scan, '>')) {
                 return create_token(scan, TOKEN_THIN_ARROW, nil_val);
             } else {
@@ -196,16 +198,10 @@ Token scan_token(Scanner *scan) {
     return create_token(scan, TOKEN_END, nil_val);
 }
 
-void destroy_tokens_from_n(List *tokens, size_t n) {
-    for (size_t i = n; i < tokens->length; i++) {
-        Token *tok = (Token *) get_ptr(access_list(tokens, i));
-        free((void *) tok->lexeme);
-        if (is_ptr(tok->literal)) free(get_ptr(tok->literal));
-        free(tok);
-    }
-    tokens->length = n;
-}
-
-void destroy_tokens(List *tokens) {
-    destroy_tokens_from_n(tokens, 0);
+Token *copy_token(const Token *token) {
+    Token *cpy = malloc(sizeof(Token));
+    *cpy = *token;
+    cpy->lexeme = calloc(strlen(token->lexeme) + 1, sizeof(char));
+    strcpy(cpy->lexeme, token->lexeme);
+    return cpy;
 }

@@ -18,8 +18,11 @@ typedef enum {
 } Precedence;
 
 typedef struct {
-    Token cur;
-    Token prev;
+    Token *cur;
+    Token *prev;
+    Token **tokens;
+    int num_tokens;
+    size_t cap;
     Scanner scanner;
     int *enc_err;
 } Parser;
@@ -41,6 +44,8 @@ ParseRule *get_rule(TokenType type);
  */
 void advance_parser(Parser *p);
 
+int match_token(Parser *p, TokenType t);
+
 /** Advances and consumes an expected token
  * If the next token does not match type t, this is an error and the error_msg
  * is shown
@@ -59,5 +64,9 @@ Ast *parse_grouping(Parser *parser);
 Ast *parse_number(Parser *parser);
 Ast *parse_unary(Parser *parser);
 Ast *parse_binary(Parser *parser);
+Ast *parse_type(Parser *parser);
+Ast *parse_var_decl(Parser *parser);
+Ast *parse_var(Parser *parser);
+Ast *parse_block(Parser *parser);
 
 #endif /* ifndef PARSER_H */

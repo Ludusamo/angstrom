@@ -46,15 +46,14 @@ typedef struct Ast_t {
     struct Ast_t **children;
     int num_children;
     int capacity;
-    Token assoc_token;
+    Token *assoc_token;
     const Ang_Type *eval_type;
 } Ast;
-
 
 const char *ast_type_to_str(Ast_Type t);
 void print_ast(const Ast *ast, int depth);
 
-Ast *create_ast(Ast_Type t, Token assoc_token);
+Ast *create_ast(Ast_Type t, const Token *assoc_token);
 Ast *copy_ast(Ast *ast);
 
 void destroy_ast(Ast *ast);

@@ -21,12 +21,12 @@ const char *ast_type_to_str(Ast_Type t) {
 }
 #undef DEFINE_CODE_STRING
 
-Ast *create_ast(Ast_Type t, Token assoc_token) {
+Ast *create_ast(Ast_Type t, const Token *assoc_token) {
     Ast *ast = calloc(1, sizeof(Ast));
     ast->children = calloc(1, sizeof(Ast *));
     ast->capacity = 1;
     ast->type = t;
-    ast->assoc_token = assoc_token;
+    ast->assoc_token = copy_token(assoc_token);
     return ast;
 }
 
@@ -46,6 +46,8 @@ void destroy_ast(Ast *ast) {
         destroy_ast(node);
         free(node);
     }
+    free(ast->assoc_token->lexeme);
+    free(ast->assoc_token);
     free(ast->children);
 }
 
