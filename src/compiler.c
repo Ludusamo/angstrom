@@ -176,6 +176,7 @@ void compile_literal(Compiler *c, Ast *code) {
         append_list(&c->instr, from_double(PUSH));
         append_list(&c->instr, literal);
     } else if (code->assoc_token->type == TOKEN_STR) {
+        //TODO: Handle Strings
         code->eval_type = find_type(c, "String");
     } else if ((code->num_children > 0
             && get_child(code, 0)->type == AST_KEYVAL)
@@ -226,7 +227,6 @@ void compile_literal(Compiler *c, Ast *code) {
         append_list(&c->instr, from_ptr((void *) code->eval_type));
         append_list(&c->instr, from_double(code->num_children));
     }
-    //TODO: Handle Strings
 }
 
 void compile_variable(Compiler *c, Ast *code) {

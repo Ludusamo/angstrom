@@ -46,6 +46,8 @@ void advance_parser(Parser *p);
 
 int match_token(Parser *p, TokenType t);
 
+int peek_token(Parser *p, TokenType t);
+
 /** Advances and consumes an expected token
  * If the next token does not match type t, this is an error and the error_msg
  * is shown

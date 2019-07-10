@@ -61,8 +61,13 @@ void advance_parser(Parser *p) {
 }
 
 int match_token(Parser *p, TokenType t) {
+    int match = peek_token(p, t);
+    if (match) advance_parser(p);
+    return match;
+}
+
+int peek_token(Parser *p, TokenType t) {
     if (p->cur->type == t) {
-        advance_parser(p);
         return 1;
     }
     return 0;
@@ -125,7 +130,24 @@ Ast *parse_expression(Parser *parser) {
 }
 
 Ast *parse_grouping(Parser *parser) {
+    Token *paren = parser->prev;
     Ast *expr = parse_expression(parser);
+
+     if (match_token(parser, TOKEN_COMMA)) {
+        Ast *tuple = create_ast(AST_LITERAL, paren);
+        expr = add_child(tuple, expr);
+        do {
+            Ast *ele = parse_expression(parser);
+            if (!ele) {
+                error(parser->prev->line,
+                    INSUFFICIENT_TUPLE,
+                    "expected element after comma for tuple\n");
+                *parser->enc_err = 1;
+                return expr;
+            }
+            add_child(tuple, ele);
+        } while (match_token(parser, TOKEN_COMMA));
+    }
     consume_token(parser, TOKEN_RPAREN, "expected token ')' after grouping");
     return expr;
 }
@@ -167,7 +189,20 @@ Ast *parse_binary(Parser *parser) {
 
 Ast *parse_type(Parser *parser) {
     if (match_token(parser, TOKEN_IDENT)) {
-        return create_ast(AST_TYPE, parser->prev);
+        Token *ident = parser->prev;
+        if (match_token(parser, TOKEN_COLON)) {
+            Ast *keyval = create_ast(AST_KEYVAL, ident);
+            return add_child(keyval, parse_type(parser));
+        }
+        return create_ast(AST_TYPE, ident);
+    }
+    if (match_token(parser, TOKEN_LPAREN)) {
+        Ast *prod_type = create_ast(AST_PRODUCT_TYPE, parser->prev);
+        do {
+            add_child(prod_type, parse_type(parser));
+        } while (match_token(parser, TOKEN_COMMA));
+        consume_token(parser, TOKEN_RPAREN, "Expected token ')'.");
+        return prod_type;
     }
     if (match_token(parser, TOKEN_PIPE)) {
         return add_child(
@@ -175,15 +210,14 @@ Ast *parse_type(Parser *parser) {
             parse_type(parser));
     }
 
-    // TODO: Error log
     return NULL;
 }
 
 static Ast *parse_destr_tuple(Parser *parser) {
-    Ast *ast = create_ast(AST_LITERAL, NULL);
+    Ast *ast = create_ast(AST_LITERAL, parser->prev);
     do {
         if (match_token(parser, TOKEN_UNDERSCORE)) {
-            add_child(ast, create_ast(AST_WILDCARD, NULL));
+            add_child(ast, create_ast(AST_WILDCARD, parser->prev));
         } else if (match_token(parser, TOKEN_IDENT)) {
             add_child(ast, create_ast(AST_VARIABLE, parser->prev));
         } else if (match_token(parser, TOKEN_LPAREN)) {
@@ -204,7 +238,7 @@ Ast *parse_var_decl(Parser *parser) {
     if (match_token(parser, TOKEN_IDENT)) {
         decl = create_ast(AST_VAR_DECL, parser->prev);
     } else if (match_token(parser, TOKEN_LPAREN)) {
-        decl = create_ast(AST_DESTR_DECL, NULL);
+        decl = create_ast(AST_DESTR_DECL, parser->prev);
         add_child(decl, parse_destr_tuple(parser));
     } else {
         error(parser->cur->line, UNEXPECTED_TOKEN, "Unexpected token.\n");
@@ -220,11 +254,16 @@ Ast *parse_var_decl(Parser *parser) {
 }
 
 Ast *parse_var(Parser *parser) {
-    return create_ast(AST_VARIABLE, parser->prev);
+    Token *literal = parser->prev;
+    if (match_token(parser, TOKEN_COLON)) {
+        Ast *keyval = create_ast(AST_KEYVAL, literal);
+        return add_child(keyval, parse_expression(parser));
+    }
+    return create_ast(AST_VARIABLE, literal);
 }
 
 Ast *parse_block(Parser *parser) {
-    Ast *block = create_ast(AST_BLOCK, NULL);
+    Ast *block = create_ast(AST_BLOCK, parser->prev);
     for (;;) {
         if (match_token(parser, TOKEN_RBRACE)) {
             break;
