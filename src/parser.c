@@ -37,7 +37,7 @@ ParseRule rules[] = {
     { parse_number, NULL, PREC_NONE }, // TOKEN_NUM
     { parse_var_decl, NULL, PREC_ASSIGNMENT }, // TOKEN_VAR
     { NULL, NULL, PREC_NONE }, // TOKEN_FN
-    { NULL, NULL, PREC_NONE }, // TOKEN_MATCH
+    { parse_pattern_matching, NULL, PREC_NONE }, // TOKEN_MATCH
     { NULL, NULL, PREC_NONE }, // TOKEN_TYPE_KEYWORD
     { NULL, NULL, PREC_NONE }, // TOKEN_RETURN
     { NULL, NULL, PREC_NONE }, // TOKEN_END
@@ -196,6 +196,9 @@ Ast *parse_type(Parser *parser) {
         }
         return create_ast(AST_TYPE, ident);
     }
+    if (match_token(parser, TOKEN_UNDERSCORE)) {
+        return create_ast(AST_WILDCARD, parser->prev);
+    }
     if (match_token(parser, TOKEN_LPAREN)) {
         Ast *prod_type = create_ast(AST_PRODUCT_TYPE, parser->prev);
         do {
@@ -210,6 +213,8 @@ Ast *parse_type(Parser *parser) {
             parse_type(parser));
     }
 
+    error(parser->prev->line, UNEXPECTED_TOKEN, "Expected type identifier.\n");
+    *parser->enc_err = 1;
     return NULL;
 }
 
@@ -278,4 +283,45 @@ Ast *parse_block(Parser *parser) {
         }
     }
     return block;
+}
+
+Ast *parse_pattern(Parser *parser) {
+    Ast *pattern = create_ast(AST_PATTERN, parser->prev);
+    Ast *pseudo_return = create_ast(AST_RET_EXPR, parser->prev);
+    Ast *ret_block = create_ast(AST_BLOCK, parser->prev);
+    if (match_token(parser, TOKEN_NUM) || match_token(parser, TOKEN_STR)) {
+        add_child(pattern, create_ast(AST_LITERAL, parser->prev));
+    } else {
+        Ast *type = parse_type(parser);
+        if (!type) {
+            return NULL;
+        } else if (type->type == AST_WILDCARD) {
+            destroy_ast(type);
+            free(type);
+            add_child(pattern, create_ast(AST_WILDCARD, parser->prev));
+        } else {
+            add_child(pattern, type);
+        }
+    }
+    consume_token(parser,
+        TOKEN_THIN_ARROW,
+        "Expected '->' to denote pattern behaviour.\n");
+    add_child(pattern, pseudo_return);
+    add_child(pseudo_return, ret_block);
+    add_child(ret_block, parse_expression(parser));
+    return pattern;
+}
+
+Ast *parse_pattern_matching(Parser *parser) {
+    Ast *match_ast = create_ast(AST_PATTERN_MATCH, parser->prev);
+    add_child(match_ast, parse_expression(parser));
+    Ast *block = create_ast(AST_BLOCK, parser->prev);
+    add_child(match_ast, block);
+    while (match_token(parser, TOKEN_PIPE)) {
+        Ast *pattern = parse_pattern(parser);
+        if (!pattern) break;
+        add_child(block, pattern);
+    }
+
+    return match_ast;
 }

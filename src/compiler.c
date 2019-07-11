@@ -35,7 +35,10 @@ void compile_code(Compiler *c, const char *code, const char *src_name) {
     append_list(&c->compiled_ast, from_ptr(ast));
     // Don't know if this check should be tied to error checking
     if (!ast) *c->enc_err = 1;
-    if (*c->enc_err) return;
+    if (*c->enc_err) {
+        dtor_parser(&parser);
+        return;
+    }
     #ifdef DEBUG
     print_ast(ast, 0);
     #endif
