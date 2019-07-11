@@ -16,7 +16,7 @@ ParseRule rules[] = {
     { NULL, NULL, PREC_NONE }, // TOKEN_COLON
     { NULL, NULL, PREC_NONE }, // TOKEN_COLON_COLON
     { NULL, NULL, PREC_NONE }, // TOKEN_UNDERSCORE
-    { NULL, NULL, PREC_CALL }, // TOKEN_DOT
+    { NULL, parse_accessor, PREC_CALL }, // TOKEN_DOT
     { parse_unary, parse_binary, PREC_TERM }, // TOKEN_MINUS
     { NULL, parse_binary, PREC_TERM }, // TOKEN_PLUS
     { NULL, parse_binary, PREC_FACTOR }, // TOKEN_SLASH
@@ -324,4 +324,19 @@ Ast *parse_pattern_matching(Parser *parser) {
     }
 
     return match_ast;
+}
+
+Ast *parse_accessor(Parser *parser) {
+    Ast *accessor = create_ast(AST_ACCESSOR, parser->prev);
+    if (match_token(parser, TOKEN_IDENT))
+        add_child(accessor, create_ast(AST_VARIABLE, parser->prev));
+    else if (match_token(parser, TOKEN_NUM)) {
+        add_child(accessor, create_ast(AST_LITERAL, parser->prev));
+    } else {
+        error(parser->cur->line,
+            UNEXPECTED_TOKEN,
+            "Expected a number or identifier for accessor.\n");
+        *parser->enc_err = 1;
+    }
+    return accessor;
 }
