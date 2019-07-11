@@ -855,8 +855,8 @@ void compile_lambda(Compiler *c, Ast *code) {
 }
 
 void compile_lambda_call(Compiler *c, Ast *code) {
-    Ast *lambda = get_child(code, 0);
-    Ast *param = get_child(code, 1);
+    Ast *lambda = get_child(code, 1);
+    Ast *param = get_child(code, 0);
 
     compile(c, lambda);
     compile(c, param);

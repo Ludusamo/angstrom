@@ -7,7 +7,7 @@
 #include "utility.h"
 
 ParseRule rules[] = {
-    { parse_grouping, NULL, PREC_NONE }, // TOKEN_LPAREN
+    { parse_grouping, parse_lambda_call, PREC_CALL }, // TOKEN_LPAREN
     { NULL, NULL, PREC_NONE }, // TOKEN_RPAREN
     { parse_block, NULL, PREC_NONE }, // TOKEN_LBRACE
     { NULL, NULL, PREC_NONE }, // TOKEN_RBRACE
@@ -37,7 +37,7 @@ ParseRule rules[] = {
     { NULL, NULL, PREC_NONE }, // TOKEN_STR
     { parse_number, NULL, PREC_NONE }, // TOKEN_NUM
     { parse_var_decl, NULL, PREC_ASSIGNMENT }, // TOKEN_VAR
-    { NULL, NULL, PREC_NONE }, // TOKEN_FN
+    { parse_lambda, NULL, PREC_NONE }, // TOKEN_FN
     { parse_pattern_matching, NULL, PREC_NONE }, // TOKEN_MATCH
     { NULL, NULL, PREC_NONE }, // TOKEN_TYPE_KEYWORD
     { NULL, NULL, PREC_NONE }, // TOKEN_RETURN
@@ -248,6 +248,7 @@ Ast *parse_type(Parser *parser) {
     }
     if (match_token(parser, TOKEN_LPAREN)) {
         Ast *prod_type = create_ast(AST_PRODUCT_TYPE, parser->prev);
+        if (match_token(parser, TOKEN_RPAREN)) return prod_type;
         do {
             add_child(prod_type, parse_type(parser));
         } while (match_token(parser, TOKEN_COMMA));
@@ -387,4 +388,34 @@ Ast *parse_accessor(Parser *parser) {
         *parser->enc_err = 1;
     }
     return accessor;
+}
+
+Ast *parse_lambda(Parser *parser) {
+    Ast *lambda = create_ast(AST_LAMBDA_LIT, parser->prev);
+    Ast *block  = create_ast(AST_BLOCK, parser->prev);
+    add_child(lambda, block);
+
+    Ast *type = parse_type(parser);
+    if (type->type == AST_PRODUCT_TYPE) {
+        if (type->num_children != 0) add_child(block, type_to_destr(type));
+    } else {
+        error(parser->cur->line,
+            TYPE_ERROR,
+            "Must supply product type to lambda.\n");
+        *parser->enc_err = 1;
+        destroy_ast(lambda);
+        return NULL;
+    }
+    consume_token(parser,
+        TOKEN_ARROW,
+        "Lambda expected '=>' to denote body of lambda.\n");
+    add_child(block, parse_expression(parser));
+
+    return lambda;
+}
+
+Ast *parse_lambda_call(Parser *parser) {
+    Ast *lambda_call = create_ast(AST_LAMBDA_CALL, parser->prev);
+    add_child(lambda_call, parse_expression(parser));
+    return lambda_call;
 }

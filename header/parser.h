@@ -73,5 +73,7 @@ Ast *parse_block(Parser *parser);
 Ast *parse_pattern(Parser *parser);
 Ast *parse_pattern_matching(Parser *parser);
 Ast *parse_accessor(Parser *parser);
+Ast *parse_lambda(Parser *parser);
+Ast *parse_lambda_call(Parser *parser);
 
 #endif /* ifndef PARSER_H */
