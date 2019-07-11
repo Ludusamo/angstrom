@@ -4,6 +4,7 @@
 #include "error.h"
 #include "tokenizer.h"
 #include <stdio.h>
+#include "utility.h"
 
 ParseRule rules[] = {
     { parse_grouping, NULL, PREC_NONE }, // TOKEN_LPAREN
@@ -98,6 +99,52 @@ void dtor_parser(Parser *parser) {
     if (parser->tokens) {
         free(parser->tokens);
     }
+}
+
+static Ast *record_type_to_destr(Ast *type) {
+    Ast * lit = create_ast(AST_LITERAL, type->assoc_token);
+    for (size_t i = 0; i < type->num_children; i++) {
+        Ast *child = get_child(type, i);
+        if (child->type == AST_TYPE) {
+            char *slot_num = calloc(num_digits(i) + 1, sizeof(char));
+            sprintf(slot_num, "%lu", i);
+            add_child(lit, create_ast(AST_VARIABLE, child->assoc_token));
+        } else if (child->type == AST_WILDCARD) {
+            add_child(lit, create_ast(AST_WILDCARD, child->assoc_token));
+        } else if (get_child(child, 0)->type == AST_PRODUCT_TYPE) {
+            add_child(lit, record_type_to_destr(get_child(child, 0)));
+        } else {
+            add_child(lit, create_ast(AST_VARIABLE, child->assoc_token));
+        }
+    }
+    return lit;
+}
+
+static Ast *type_to_destr(Ast *type) {
+    Ast *destr = 0;
+    if (type->num_children != 0) {
+        if (type->num_children == 1) {
+            // Variable declaration
+            const Token * var_name = get_child(type, 0)->assoc_token;
+            destr = create_ast(AST_VAR_DECL, var_name);
+
+            // only one type
+            Ast *ptype = get_child(get_child(type, 0), 0);
+            Ast *copy = create_ast(ptype->type, ptype->assoc_token);
+            destroy_ast(type);
+            free(type);
+            type = 0;
+
+            type = copy;
+        } else {
+            destr = create_ast(AST_DESTR_DECL, type->assoc_token);
+            add_child(destr, record_type_to_destr(type));
+        }
+        Ast *placehold = create_ast(AST_PLACEHOLD, type->assoc_token);
+        add_child(placehold, type);
+        add_child(destr, placehold);
+    }
+    return destr;
 }
 
 Ast *parse(Parser *parser, const char *code, const char *src_name) {
@@ -296,9 +343,10 @@ Ast *parse_pattern(Parser *parser) {
         if (!type) {
             return NULL;
         } else if (type->type == AST_WILDCARD) {
-            destroy_ast(type);
-            free(type);
-            add_child(pattern, create_ast(AST_WILDCARD, parser->prev));
+            add_child(pattern, type);
+        } else if (type->type == AST_PRODUCT_TYPE) {
+            add_child(pattern, copy_ast(type));
+            add_child(ret_block, type_to_destr(type));
         } else {
             add_child(pattern, type);
         }
