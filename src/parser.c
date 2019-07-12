@@ -22,14 +22,14 @@ ParseRule rules[] = {
     { NULL, parse_binary, PREC_TERM }, // TOKEN_PLUS
     { NULL, parse_binary, PREC_FACTOR }, // TOKEN_SLASH
     { NULL, parse_binary, PREC_FACTOR }, // TOKEN_STAR
-    { parse_unary, parse_binary, PREC_NONE }, // TOKEN_NOT
-    { NULL, parse_binary, PREC_NONE }, // TOKEN_NEQ
-    { NULL, parse_binary, PREC_NONE }, // TOKEN_EQ_EQ
-    { NULL, NULL, PREC_NONE }, // TOKEN_EQ
-    { NULL, parse_binary, PREC_NONE }, // TOKEN_GT
-    { NULL, parse_binary, PREC_NONE }, // TOKEN_GTE
-    { NULL, parse_binary, PREC_NONE }, // TOKEN_LT
-    { NULL, parse_binary, PREC_NONE }, // TOKEN_LTE
+    { parse_unary, NULL, PREC_UNARY }, // TOKEN_NOT
+    { NULL, parse_binary, PREC_COMPARISON }, // TOKEN_NEQ
+    { NULL, parse_binary, PREC_COMPARISON }, // TOKEN_EQ_EQ
+    { NULL, parse_assign, PREC_ASSIGNMENT }, // TOKEN_EQ
+    { NULL, parse_binary, PREC_COMPARISON }, // TOKEN_GT
+    { NULL, parse_binary, PREC_COMPARISON }, // TOKEN_GTE
+    { NULL, parse_binary, PREC_COMPARISON }, // TOKEN_LT
+    { NULL, parse_binary, PREC_COMPARISON }, // TOKEN_LTE
     { NULL, NULL, PREC_NONE }, // TOKEN_PIPE
     { NULL, NULL, PREC_NONE }, // TOKEN_THIN_ARROW
     { NULL, NULL, PREC_NONE }, // TOKEN_ARROW
@@ -295,6 +295,7 @@ Ast *parse_var_decl(Parser *parser) {
         add_child(decl, parse_destr_tuple(parser));
     } else {
         error(parser->cur->line, UNEXPECTED_TOKEN, "Unexpected token.\n");
+        *parser->enc_err = 1;
         return NULL;
     }
     if (match_token(parser, TOKEN_EQ)) {
@@ -416,6 +417,10 @@ Ast *parse_lambda(Parser *parser) {
 
 Ast *parse_lambda_call(Parser *parser) {
     Ast *lambda_call = create_ast(AST_LAMBDA_CALL, parser->prev);
-    add_child(lambda_call, parse_expression(parser));
-    return lambda_call;
+    return add_child(lambda_call, parse_expression(parser));
+}
+
+Ast *parse_assign(Parser *parser) {
+    Ast *assign = create_ast(AST_ASSIGN, parser->prev);
+    return add_child(assign, parse_expression(parser));
 }

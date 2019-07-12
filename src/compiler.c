@@ -340,7 +340,7 @@ void compile_decl(Compiler *c, Ast *code) {
         *c->enc_err = 1;
         return;
     }
-    create_symbol(&c->env, sym, type, loc, 0, has_assignment, !local);
+    create_symbol(&c->env, sym, type, loc, 1, has_assignment, !local);
 
     if (!local) {
         append_list(&c->instr, from_double(GSTORE));
@@ -491,8 +491,16 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
 }
 
 void compile_assign(Compiler *c, Ast *code) {
-    const char *symbol = code->assoc_token->lexeme;
+    const char *symbol = get_child(code, 1)->assoc_token->lexeme;
     Symbol *sym = find_symbol(c, symbol);
+    if (!sym) {
+        error(get_child(code, 1)->assoc_token->line,
+            UNDECLARED_VARIABLE,
+            symbol);
+        fprintf(stderr, "\n");
+        *c->enc_err = 1;
+        return;
+    }
     if (!sym->mut && sym->assigned) {
         error(code->assoc_token->line,
             IMMUTABLE_VARIABLE,
@@ -501,6 +509,11 @@ void compile_assign(Compiler *c, Ast *code) {
         return;
     }
     compile(c, get_child(code, 0));
+    if (!type_equality(sym->type, get_child(code, 0)->eval_type)) {
+        error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
+        *c->enc_err = 1;
+        return;
+    }
     sym->assigned = 1;
     append_list(&c->instr, from_double(DUP));
     append_list(&c->instr, from_double(sym->global ? GSTORE : STORE));
