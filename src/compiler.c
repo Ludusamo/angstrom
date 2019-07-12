@@ -282,6 +282,13 @@ void compile_type_decl(Compiler *c, Ast *code) {
     // Set default value
     if (has_default) {
         compile(c, get_child(code, 0));
+        if (!type_equality(type, get_child(code, 0)->eval_type)) {
+            error(code->assoc_token->line,
+                TYPE_ERROR,
+                "Default value does not match the type declaration.\n");
+            *c->enc_err = 1;
+            return;
+        }
         append_list(&c->instr, from_double(DUP));
         append_list(&c->instr, from_double(SET_DEFAULT_VAL));
         append_list(&c->instr, from_ptr((void *) type_name));

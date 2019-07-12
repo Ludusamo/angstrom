@@ -39,7 +39,7 @@ ParseRule rules[] = {
     { parse_var_decl, NULL, PREC_ASSIGNMENT }, // TOKEN_VAR
     { parse_lambda, NULL, PREC_NONE }, // TOKEN_FN
     { parse_pattern_matching, NULL, PREC_NONE }, // TOKEN_MATCH
-    { NULL, NULL, PREC_NONE }, // TOKEN_TYPE_KEYWORD
+    { parse_type_decl, NULL, PREC_NONE }, // TOKEN_TYPE_KEYWORD
     { parse_return, NULL, PREC_NONE }, // TOKEN_RETURN
     { NULL, NULL, PREC_NONE }, // TOKEN_END
 };
@@ -428,4 +428,16 @@ Ast *parse_assign(Parser *parser) {
 Ast *parse_return(Parser *parser) {
     Ast *ret = create_ast(AST_RET_EXPR, parser->prev);
     return add_child(ret, parse_expression(parser));
+}
+
+Ast *parse_type_decl(Parser *parser) {
+    consume_token(parser, TOKEN_IDENT, "Expect identifier of type.\n");
+    Ast *type = create_ast(AST_TYPE_DECL, parser->prev);
+    if (match_token(parser, TOKEN_EQ)) {
+        add_child(type, parse_expression(parser));
+    }
+    if (match_token(parser, TOKEN_COLON_COLON)) {
+        add_child(type, parse_type(parser));
+    }
+    return type;
 }
