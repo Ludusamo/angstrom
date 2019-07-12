@@ -40,7 +40,7 @@ ParseRule rules[] = {
     { parse_lambda, NULL, PREC_NONE }, // TOKEN_FN
     { parse_pattern_matching, NULL, PREC_NONE }, // TOKEN_MATCH
     { NULL, NULL, PREC_NONE }, // TOKEN_TYPE_KEYWORD
-    { NULL, NULL, PREC_NONE }, // TOKEN_RETURN
+    { parse_return, NULL, PREC_NONE }, // TOKEN_RETURN
     { NULL, NULL, PREC_NONE }, // TOKEN_END
 };
 
@@ -423,4 +423,9 @@ Ast *parse_lambda_call(Parser *parser) {
 Ast *parse_assign(Parser *parser) {
     Ast *assign = create_ast(AST_ASSIGN, parser->prev);
     return add_child(assign, parse_expression(parser));
+}
+
+Ast *parse_return(Parser *parser) {
+    Ast *ret = create_ast(AST_RET_EXPR, parser->prev);
+    return add_child(ret, parse_expression(parser));
 }

@@ -76,5 +76,6 @@ Ast *parse_accessor(Parser *parser);
 Ast *parse_lambda(Parser *parser);
 Ast *parse_lambda_call(Parser *parser);
 Ast *parse_assign(Parser *parser);
+Ast *parse_return(Parser *parser);
 
 #endif /* ifndef PARSER_H */
