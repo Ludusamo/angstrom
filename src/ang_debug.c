@@ -15,6 +15,7 @@ void print_stack_trace(const Ang_VM *vm) {
     fprintf(stderr, "%*s", lenOffset, "[ ");
     for (int i = 0; i < sp; i++) {
         print_ang_obj(vm->mem.stack[i]);
+        fprintf(stderr, " ");
     }
     fprintf(stderr, "]\n");
 }

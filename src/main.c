@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "error.h"
 #include "tokenizer.h"
-#include "ast.h"
+#include "ang_ast.h"
 #include "ang_vm.h"
 #include "ang_opcodes.h"
 #include "ang_type.h"
@@ -101,6 +101,7 @@ void run_repl() {
         if (!vm.enc_err) {
             Ang_Obj *result = pop_stack(&vm.mem);
             print_ang_obj(result);
+            fprintf(stderr, "\n");
         } else {
             vm.enc_err = 0;
         }

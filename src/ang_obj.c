@@ -7,7 +7,7 @@
 void mark_ang_obj(Ang_Obj *obj) {
     if (!obj || obj->marked == 1) return;
     obj->marked = 1;
-    if (obj->type->cat == PRODUCT) {
+    if (obj->type->cat == PRODUCT || obj->type->cat == ARRAY) {
         List *slots = get_ptr(obj->v);
         for (size_t i = 0; i < slots->length; i++) {
             mark_ang_obj(get_ptr(access_list(slots, i)));
@@ -27,11 +27,18 @@ void print_ang_obj(const Ang_Obj *obj) {
         fprintf(stderr, "%s ", v.bits == true_val.bits
             ? "true"
             : "false");
-    } else if (is_double(v))
-        fprintf(stderr, "%.2lf ", v.as_double);
+    } else if (t->cat == ARRAY) {
+        fprintf(stderr, "[ ");
+        List *slots = get_ptr(v);
+        for (size_t i = 0; i < slots->length; i++) {
+            print_ang_obj(get_ptr(access_list(slots, i)));
+        }
+        fprintf(stderr, "]");
+    } else if (is_double(v)) {
+        fprintf(stderr, "%.2lf", v.as_double);
+    } else if (is_int32(v))
+        fprintf(stderr, "%d", v.as_int32);
     else if (is_ptr(v)) {
-        fprintf(stderr, "<%s> ", t->name);
+        fprintf(stderr, "<%s>", t->name);
     }
-    else
-        fprintf(stderr, "%d ", v.as_int32);
 }

@@ -1,17 +1,16 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
-#include "ast.h"
+#include "ang_ast.h"
 #include "hashtable.h"
 #include "ang_env.h"
-#include "ast.h"
+#include "parser.h"
 
 typedef struct Compiler Compiler;
 struct Compiler{
     List instr;
     int *enc_err;
 
-    Parser parser;
     List compiled_ast;
     Ang_Env env;
 
