@@ -1,19 +1,20 @@
 1000
 match (3)
-    | 2 => 1
-    | Num => 2
+    | 2 -> 1
+    | Num -> 2
 
 2000
 match 3
-    | Num => 2
-    | 3 => 1
+    | Num -> 2
+    | 3 -> 1
+
 3000
 match (2, 3)
-    | (a: Num, b: Num) => a + b
-    | Num => 1
+    | (a: Num, b: Num) -> a + b
+    | Num -> 1
 
 4000
-match (2, 3) {
-    Num => 1
-    (a: Num, b: Num) => a + b
-}
+match (2, 3)
+    | Num -> 1
+    | (a: Num, b: Num) -> a + b
+

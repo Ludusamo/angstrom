@@ -135,8 +135,8 @@ void compile_unary_op(Compiler *c, Ast *code) {
 }
 
 void compile_binary_op(Compiler *c, Ast *code) {
-    Ast *lhs = get_child(code, 0);
-    Ast *rhs = get_child(code, 1);
+    Ast *lhs = get_child(code, 1);
+    Ast *rhs = get_child(code, 0);
 
     compile(c, lhs);
     compile(c, rhs);
@@ -516,6 +516,7 @@ void compile_assign(Compiler *c, Ast *code) {
         return;
     }
     compile(c, get_child(code, 0));
+    printf("%s %s\n", sym->type->name, get_child(code, 0)->eval_type->name);
     if (!type_equality(sym->type, get_child(code, 0)->eval_type)) {
         error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
         *c->enc_err = 1;
@@ -527,7 +528,21 @@ void compile_assign(Compiler *c, Ast *code) {
     append_list(&c->instr, from_double(sym->loc));
 }
 
-static char *construct_sum_type_name(const List *types) {
+static void remove_duplicate_types(List *types) {
+    Hashtable dup;
+    ctor_hashtable(&dup);
+    for (int i = types->length - 1; i >= 0; i--) {
+        const char *name = ((Ang_Type *) get_ptr(access_list(types, i)))->name;
+        if (access_hashtable(&dup, name).bits == nil_val.bits) {
+            set_hashtable(&dup, name, true_val);
+        } else {
+            delete_list(types, i);
+        }
+    }
+    dtor_hashtable(&dup);
+}
+
+static char *construct_sum_type_name(List *types) {
     // TYPE|TYPE...|TYPE
     size_t name_size = types->length;
     for (size_t i = 0; i < types->length; i++) {
@@ -544,7 +559,8 @@ static char *construct_sum_type_name(const List *types) {
     return type_name;
 }
 
-static Ang_Type *get_sum_type(Compiler *c, const List *types) {
+static Ang_Type *get_sum_type(Compiler *c, List *types) {
+    remove_duplicate_types(types); // Remove duplicate types
     char *sum_type_name = construct_sum_type_name(types);
     Ang_Type *sum_type = find_type(c, sum_type_name);
     if (!sum_type) {

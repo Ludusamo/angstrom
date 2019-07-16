@@ -150,7 +150,12 @@ static Ast *type_to_destr(Ast *type) {
 Ast *parse(Parser *parser, const char *code, const char *src_name) {
     ctor_parser(parser, code, src_name);
     advance_parser(parser);
-    return parse_expression(parser);
+    Ast *prog = create_ast(AST_PROG, parser->cur);
+    while (parser->cur->type != TOKEN_END) {
+        add_child(prog, parse_expression(parser));
+    }
+
+    return prog;
 }
 
 Ast *parse_precedence(Parser *parser, Precedence precedence) {
@@ -234,36 +239,46 @@ Ast *parse_binary(Parser *parser) {
     return NULL;
 }
 
+static Ast *parse_product_type(Parser *parser) {
+    Ast *type = create_ast(AST_PRODUCT_TYPE, parser->prev);
+    if (!match_token(parser, TOKEN_RPAREN)) {
+        do {
+            add_child(type, parse_type(parser));
+        } while (match_token(parser, TOKEN_COMMA));
+        consume_token(parser, TOKEN_RPAREN, "Expected token ')'.\n");
+    }
+    return type;
+}
+
 Ast *parse_type(Parser *parser) {
+    Ast *type = NULL;
     if (match_token(parser, TOKEN_IDENT)) {
         Token *ident = parser->prev;
         if (match_token(parser, TOKEN_COLON)) {
             Ast *keyval = create_ast(AST_KEYVAL, ident);
-            return add_child(keyval, parse_type(parser));
+            type = add_child(keyval, parse_type(parser));
+        } else {
+            type = create_ast(AST_TYPE, ident);
         }
-        return create_ast(AST_TYPE, ident);
-    }
-    if (match_token(parser, TOKEN_UNDERSCORE)) {
-        return create_ast(AST_WILDCARD, parser->prev);
-    }
-    if (match_token(parser, TOKEN_LPAREN)) {
-        Ast *prod_type = create_ast(AST_PRODUCT_TYPE, parser->prev);
-        if (match_token(parser, TOKEN_RPAREN)) return prod_type;
-        do {
-            add_child(prod_type, parse_type(parser));
-        } while (match_token(parser, TOKEN_COMMA));
-        consume_token(parser, TOKEN_RPAREN, "Expected token ')'.");
-        return prod_type;
+    } else if (match_token(parser, TOKEN_UNDERSCORE)) {
+        type = create_ast(AST_WILDCARD, parser->prev);
+    } else if (match_token(parser, TOKEN_LPAREN)) {
+        type = parse_product_type(parser);
     }
     if (match_token(parser, TOKEN_PIPE)) {
-        return add_child(
-            create_ast(AST_SUM_TYPE, parser->prev),
-            parse_type(parser));
+        type = add_child( create_ast(AST_SUM_TYPE, parser->prev), type);
+        add_child(type, parse_type(parser));
+    }
+    if (match_token(parser, TOKEN_ARROW)) {
+        type = add_child( create_ast(AST_LAMBDA_TYPE, parser->prev), type);
+        add_child(type, parse_type(parser));
     }
 
-    error(parser->prev->line, UNEXPECTED_TOKEN, "Expected type identifier.\n");
-    *parser->enc_err = 1;
-    return NULL;
+    if (type == NULL) {
+        error(parser->prev->line, UNEXPECTED_TOKEN, "Expected type identifier.\n");
+        *parser->enc_err = 1;
+    }
+    return type;
 }
 
 static Ast *parse_destr_tuple(Parser *parser) {
@@ -396,8 +411,8 @@ Ast *parse_lambda(Parser *parser) {
     Ast *block  = create_ast(AST_BLOCK, parser->prev);
     add_child(lambda, block);
 
-    Ast *type = parse_type(parser);
-    if (type->type == AST_PRODUCT_TYPE) {
+    if (match_token(parser, TOKEN_LPAREN)) {
+        Ast *type = parse_product_type(parser);
         if (type->num_children != 0) add_child(block, type_to_destr(type));
     } else {
         error(parser->cur->line,
@@ -417,7 +432,7 @@ Ast *parse_lambda(Parser *parser) {
 
 Ast *parse_lambda_call(Parser *parser) {
     Ast *lambda_call = create_ast(AST_LAMBDA_CALL, parser->prev);
-    return add_child(lambda_call, parse_expression(parser));
+    return add_child(lambda_call, parse_grouping(parser));
 }
 
 Ast *parse_assign(Parser *parser) {

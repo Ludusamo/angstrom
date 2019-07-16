@@ -34,11 +34,11 @@ void print_ang_obj(const Ang_Obj *obj) {
             print_ang_obj(get_ptr(access_list(slots, i)));
         }
         fprintf(stderr, "]");
-    } else if (is_double(v))
+    } else if (is_double(v)) {
         fprintf(stderr, "%.2lf", v.as_double);
+    } else if (is_int32(v))
+        fprintf(stderr, "%d", v.as_int32);
     else if (is_ptr(v)) {
         fprintf(stderr, "<%s>", t->name);
     }
-    else
-        fprintf(stderr, "%d", v.as_int32);
 }
