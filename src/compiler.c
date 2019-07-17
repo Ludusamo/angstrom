@@ -95,6 +95,9 @@ void compile(Compiler *c, Ast *code) {
     case AST_LAMBDA_CALL:
         compile_lambda_call(c, code);
         break;
+    case AST_ARRAY:
+        compile_array(c, code);
+        break;
     case AST_PLACEHOLD:
         compile_placeholder(c, code);
         break;
@@ -628,7 +631,7 @@ static Ang_Type *get_lambda_type(
     return lambda_type;
 }
 
-static char *construct_array_type_name(Compiler *c, Ang_Type *contains) {
+static char *construct_array_type_name(Compiler *c, const Ang_Type *contains) {
     // [TYPE]
     size_t name_size = 3 + strlen(contains->name);
     char *type_name = calloc(name_size, sizeof(char));
@@ -639,7 +642,7 @@ static char *construct_array_type_name(Compiler *c, Ang_Type *contains) {
     return type_name;
 }
 
-static Ang_Type *get_array_type(Compiler *c, Ang_Type *contains) {
+static Ang_Type *get_array_type(Compiler *c, const Ang_Type *contains) {
     char *name = construct_array_type_name(c, contains);
     Ang_Type *type = find_type(c, name);
     if (!type) {
@@ -649,7 +652,7 @@ static Ang_Type *get_array_type(Compiler *c, Ang_Type *contains) {
         type->slot_types = calloc(1, sizeof(List));
         ctor_list(type->slot_types);
         ctor_hashtable(type->slots);
-        append_list(type->slot_types, from_ptr(contains));
+        append_list(type->slot_types, from_ptr((void *) contains));
         add_type(&get_root_compiler(c)->env, type);
     } else {
         free(name);
@@ -976,6 +979,28 @@ void compile_match(Compiler *c, Ast *code) {
     code->eval_type = block->eval_type;
 }
 
+void compile_array(Compiler *c, Ast *code) {
+    const Ang_Type *ele_type = NULL;
+    for (int i = code->num_children - 1; i >= 0; i--) {
+        Ast *child = get_child(code, i);
+        compile(c, child);
+        if (!ele_type) ele_type = child->eval_type;
+        else if (!type_equality(ele_type, child->eval_type)) {
+            error(child->assoc_token->line,
+                TYPE_ERROR,
+                "Elements in array literal are not all of the same type.\n");
+            *c->enc_err = 1;
+            break;
+        }
+    }
+    if (!ele_type) ele_type = find_type(c, "Any");
+    Ang_Type *t = get_array_type(c, ele_type);
+    append_list(&c->instr, from_double(CONS_ARR));
+    append_list(&c->instr, from_ptr(t));
+    append_list(&c->instr, from_double(code->num_children));
+    code->eval_type = t;
+}
+
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
     if (t->cat == PRIMITIVE) {
         // Base case for Num type
@@ -999,6 +1024,7 @@ void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
         // Push on the type of the object
         Value type_val = from_ptr((void *) t);
         append_list(&c->instr, type_val);
+        append_list(&c->instr, from_double(0));
     } else if (t->cat == SUM) {
         push_default_value(c, get_ptr(access_list(t->slot_types, 0)), default_value);
     } else if (t->cat == LAMBDA) {

@@ -463,6 +463,7 @@ Ast *parse_type_decl(Parser *parser) {
 
 Ast *parse_array(Parser *parser) {
     Ast *arr = create_ast(AST_ARRAY, parser->prev);
+    if (match_token(parser, TOKEN_RBRACK)) return arr;
     Ast *ele = parse_expression(parser);
     if (ele) {
         add_child(arr, ele);

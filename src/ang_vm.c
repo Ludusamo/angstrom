@@ -170,8 +170,12 @@ void eval(Ang_VM *vm) {
     }
     case CONS_ARR: {
         Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
+        int num_ele = get_next_op(vm).as_int32;
         List *l = malloc(sizeof(List));
         ctor_list(l);
+        for (int i = 0; i < num_ele; i++) {
+            append_list(l, from_ptr(pop_stack(&vm->mem)));
+        }
         obj->v = from_ptr(l);
         push_stack(&vm->mem, obj);
         break;
