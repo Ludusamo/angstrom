@@ -11,7 +11,7 @@ ParseRule rules[] = {
     { NULL, NULL, PREC_NONE }, // TOKEN_RPAREN
     { parse_block, NULL, PREC_NONE }, // TOKEN_LBRACE
     { NULL, NULL, PREC_NONE }, // TOKEN_RBRACE
-    { NULL, NULL, PREC_NONE }, // TOKEN_LBRACK
+    { parse_array, NULL, PREC_NONE }, // TOKEN_LBRACK
     { NULL, NULL, PREC_NONE }, // TOKEN_RBRACK
     { NULL, NULL, PREC_NONE }, // TOKEN_COMMA
     { NULL, NULL, PREC_NONE }, // TOKEN_COLON
@@ -459,4 +459,20 @@ Ast *parse_type_decl(Parser *parser) {
         add_child(type, parse_type(parser));
     }
     return type;
+}
+
+Ast *parse_array(Parser *parser) {
+    Ast *arr = create_ast(AST_ARRAY, parser->prev);
+    Ast *ele = parse_expression(parser);
+    if (ele) {
+        add_child(arr, ele);
+        while (match_token(parser, TOKEN_COMMA)) {
+            add_child(arr, parse_expression(parser));
+        }
+    }
+
+    consume_token(parser,
+        TOKEN_RBRACK,
+        "Expected closing ']' at the end of array literal\n");
+    return arr;
 }

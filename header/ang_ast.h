@@ -30,6 +30,7 @@
     code(RET_EXPR) \
     code(KEYVAL) \
     code(PLACEHOLD) \
+    code(ARRAY) \
     code(LAMBDA_LIT) \
     code(LAMBDA_CALL) \
     code(PATTERN_MATCH) \
