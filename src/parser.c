@@ -264,6 +264,10 @@ Ast *parse_type(Parser *parser) {
         type = create_ast(AST_WILDCARD, parser->prev);
     } else if (match_token(parser, TOKEN_LPAREN)) {
         type = parse_product_type(parser);
+    } else if (match_token(parser, TOKEN_LBRACK)) {
+        type = create_ast(AST_ARRAY_TYPE, parser->prev);
+        add_child(type, parse_type(parser));
+        consume_token(parser, TOKEN_RBRACK, "Expected closing ']' in type.\n");
     }
     if (match_token(parser, TOKEN_PIPE)) {
         type = add_child( create_ast(AST_SUM_TYPE, parser->prev), type);

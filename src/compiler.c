@@ -961,13 +961,6 @@ void compile_pattern(Compiler *c, Ast *code) {
     }
 
     code->eval_type = rhs->eval_type;
-
-    // Set all return jump locations to here
-    //Value end_jmp = from_double(instr_count(c));
-    //for (size_t i = 0; i < c->jmp_locs.length; i++) {
-    //    int jmp_instr = access_list(&c->jmp_locs, i).as_int32;
-    //    set_list(&c->instr, jmp_instr, end_jmp);
-    //}
 }
 
 void compile_match(Compiler *c, Ast *code) {
