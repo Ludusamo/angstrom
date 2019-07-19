@@ -365,6 +365,15 @@ Ast *parse_pattern(Parser *parser) {
             return NULL;
         } else if (type->type == AST_WILDCARD) {
             add_child(pattern, type);
+        } else if (type->type == AST_KEYVAL) {
+            Ast *type_ast = get_child(type, 0);
+            add_child(pattern, copy_ast(type_ast));
+            // Binds local with appropriate type
+            Ast *bind_local = create_ast(AST_BIND_LOCAL, type->assoc_token);
+            add_child(bind_local, copy_ast(type_ast));
+            add_child(ret_block, bind_local);
+            destroy_ast(type);
+            free(type);
         } else if (type->type == AST_PRODUCT_TYPE) {
             add_child(pattern, copy_ast(type));
             add_child(ret_block, type_to_destr(type));
@@ -479,7 +488,7 @@ Ast *parse_array(Parser *parser) {
 }
 
 Ast *parse_access_array(Parser *parser) {
-    Ast *access = create_ast(AST_ACCESS_ARR, parser->prev);
+    Ast *access = create_ast(AST_ACCESS_ARRAY, parser->prev);
     add_child(access, parse_expression(parser));
     consume_token(parser,
         TOKEN_RBRACK,

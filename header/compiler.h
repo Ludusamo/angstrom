@@ -32,6 +32,7 @@ void compile_variable(Compiler *c, Ast *code);
 void compile_keyval(Compiler *c, Ast *code);
 void compile_accessor(Compiler *c, Ast *code);
 void compile_type_decl(Compiler *c, Ast *code);
+void compile_bind_local(Compiler *c, Ast *code);
 void compile_decl(Compiler *c, Ast *code);
 void compile_assign(Compiler *c, Ast *code);
 void compile_return(Compiler *c, Ast *code);
@@ -53,6 +54,7 @@ void compile_pattern(Compiler *c, Ast *code);
 void compile_match(Compiler *c, Ast *code);
 
 void compile_array(Compiler *c, Ast *code);
+void compile_array_accessor(Compiler *c, Ast *code);
 
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value);
 

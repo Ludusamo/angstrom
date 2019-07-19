@@ -13,6 +13,7 @@ void ctor_primitive_types(Primitive_Types *defaults) {
         "String",
         PRIMITIVE,
         from_ptr(calloc(0, sizeof(char))));
+    ctor_ang_type(&defaults->null_default, NULL_TYPE, "Null", PRIMITIVE, nil_val);
 }
 
 void dtor_primitive_types(Primitive_Types *defaults) {
@@ -22,4 +23,5 @@ void dtor_primitive_types(Primitive_Types *defaults) {
     dtor_ang_type(&defaults->num_default);
     dtor_ang_type(&defaults->bool_default);
     dtor_ang_type(&defaults->string_default);
+    dtor_ang_type(&defaults->null_default);
 }

@@ -66,6 +66,7 @@ void run_script(char *file_path) {
     set_hashtable(&vm.compiler.env.types, "Num", from_ptr(&defaults.num_default));
     set_hashtable(&vm.compiler.env.types, "Bool", from_ptr(&defaults.bool_default));
     set_hashtable(&vm.compiler.env.types, "String", from_ptr(&defaults.string_default));
+    set_hashtable(&vm.compiler.env.types, "Null", from_ptr(&defaults.null_default));
 
     char *file_contents = read_file(file_path);
     run_code(&vm, file_contents, file_path);
@@ -89,6 +90,7 @@ void run_repl() {
     set_hashtable(&vm.compiler.env.types, "Num", from_ptr(&defaults.num_default));
     set_hashtable(&vm.compiler.env.types, "Bool", from_ptr(&defaults.bool_default));
     set_hashtable(&vm.compiler.env.types, "String", from_ptr(&defaults.string_default));
+    set_hashtable(&vm.compiler.env.types, "Null", from_ptr(&defaults.null_default));
     char *expr;
     for (;;) {
         printf("> ");

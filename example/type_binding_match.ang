@@ -1,0 +1,5 @@
+var a = 3 :: Num | Null
+
+match a
+    | a: Num -> a + a
+    | Null -> 0
