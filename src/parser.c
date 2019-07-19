@@ -11,7 +11,7 @@ ParseRule rules[] = {
     { NULL, NULL, PREC_NONE }, // TOKEN_RPAREN
     { parse_block, NULL, PREC_NONE }, // TOKEN_LBRACE
     { NULL, NULL, PREC_NONE }, // TOKEN_RBRACE
-    { parse_array, NULL, PREC_NONE }, // TOKEN_LBRACK
+    { parse_array, parse_access_array, PREC_CALL }, // TOKEN_LBRACK
     { NULL, NULL, PREC_NONE }, // TOKEN_RBRACK
     { NULL, NULL, PREC_NONE }, // TOKEN_COMMA
     { NULL, NULL, PREC_NONE }, // TOKEN_COLON
@@ -474,6 +474,15 @@ Ast *parse_array(Parser *parser) {
 
     consume_token(parser,
         TOKEN_RBRACK,
-        "Expected closing ']' at the end of array literal\n");
+        "Expected closing ']' at the end of array literal.\n");
     return arr;
+}
+
+Ast *parse_access_array(Parser *parser) {
+    Ast *access = create_ast(AST_ACCESS_ARR, parser->prev);
+    add_child(access, parse_expression(parser));
+    consume_token(parser,
+        TOKEN_RBRACK,
+        "Expected closing ']' at the end of accessor.\n");
+    return access;
 }

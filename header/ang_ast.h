@@ -25,6 +25,7 @@
     code(LAMBDA_TYPE) \
     code(ARRAY_TYPE) \
     code(ACCESSOR) \
+    code(ACCESS_ARR) \
     code(VARIABLE) \
     code(WILDCARD) \
     code(RET_EXPR) \

@@ -79,5 +79,6 @@ Ast *parse_assign(Parser *parser);
 Ast *parse_return(Parser *parser);
 Ast *parse_type_decl(Parser *parser);
 Ast *parse_array(Parser *parser);
+Ast *parse_access_array(Parser *parser);
 
 #endif /* ifndef PARSER_H */
