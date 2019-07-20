@@ -10,6 +10,8 @@
     code(LITERAL) \
     code(BLOCK) \
     code(EQ_OP) \
+    code(AND_OP) \
+    code(OR_OP) \
     code(COMP_OP) \
     code(ADD_OP) \
     code(MUL_OP) \

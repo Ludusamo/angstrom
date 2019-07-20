@@ -59,6 +59,13 @@ void compile(Compiler *c, Ast *code) {
     case AST_MUL_OP:
         compile_binary_op(c, code);
         break;
+    case AST_COMP_OP:
+        compile_comp_op(c, code);
+        break;
+    case AST_AND_OP:
+    case AST_OR_OP:
+        compile_bool_op(c, code);
+        break;
     case AST_UNARY_OP:
         compile_unary_op(c, code);
         break;
@@ -177,6 +184,107 @@ void compile_binary_op(Compiler *c, Ast *code) {
     }
 }
 
+void compile_comp_op(Compiler *c, Ast *code) {
+    Ast *lhs = get_child(code, 1);
+    Ast *rhs = get_child(code, 0);
+
+    compile(c, lhs);
+    compile(c, rhs);
+
+    code->eval_type = find_type(c, "Bool");
+    if (lhs->eval_type->id != NUM_TYPE || rhs->eval_type->id != NUM_TYPE) {
+        error(code->assoc_token->line,
+                TYPE_ERROR,
+                "Cannot do compare operations on non-numbers.\n");
+        *c->enc_err = 1;
+        return;
+    }
+
+    switch (code->assoc_token->type) {
+    case TOKEN_EQ_EQ:
+        append_list(&c->instr, from_double(EQ));
+        break;
+    case TOKEN_NEQ:
+        append_list(&c->instr, from_double(EQ));
+        append_list(&c->instr, from_double(NEG));
+        break;
+    case TOKEN_GT:
+        append_list(&c->instr, from_double(SUBF));
+        append_list(&c->instr, from_double(GTZ));
+        break;
+    case TOKEN_GTE:
+        append_list(&c->instr, from_double(SUBF));
+        append_list(&c->instr, from_double(LTZ));
+        append_list(&c->instr, from_double(NEG));
+        break;
+    case TOKEN_LT:
+        append_list(&c->instr, from_double(SUBF));
+        append_list(&c->instr, from_double(LTZ));
+        break;
+    case TOKEN_LTE:
+        append_list(&c->instr, from_double(SUBF));
+        append_list(&c->instr, from_double(GTZ));
+        append_list(&c->instr, from_double(NEG));
+        break;
+    default:
+        break;
+    }
+}
+
+void compile_bool_op(Compiler *c, Ast *code) {
+    code->eval_type = find_type(c, "Bool");
+    Ast *lhs = get_child(code, 1);
+    compile(c, lhs);
+    if (code->assoc_token->type == TOKEN_AND) {
+        append_list(&c->instr, from_double(JNE));
+    } else {
+        append_list(&c->instr, from_double(JE));
+    }
+    int jmp_loc = instr_count(c);
+    append_list(&c->instr, from_double(0));
+
+    Ast *rhs = get_child(code, 0);
+    compile(c, rhs);
+    if (code->assoc_token->type == TOKEN_AND) {
+        append_list(&c->instr, from_double(JNE));
+    } else {
+        append_list(&c->instr, from_double(JE));
+    }
+    int rhs_jmp_loc = instr_count(c);
+    append_list(&c->instr, from_double(0));
+
+    // Push value if both pass
+    append_list(&c->instr, from_double(PUSOBJ));
+    append_list(&c->instr, from_ptr((void *) code->eval_type));
+    if (code->assoc_token->type == TOKEN_AND) {
+        append_list(&c->instr, true_val);
+    } else {
+        append_list(&c->instr, false_val);
+    }
+    append_list(&c->instr, from_double(JMP));
+    int end_jmp_loc = instr_count(c);
+    append_list(&c->instr, from_double(0));
+
+    set_list(&c->instr, jmp_loc, from_double(instr_count(c))); // Shortcircuit
+    set_list(&c->instr, rhs_jmp_loc, from_double(instr_count(c)));
+    append_list(&c->instr, from_double(PUSOBJ));
+    append_list(&c->instr, from_ptr((void *) code->eval_type));
+    if (code->assoc_token->type == TOKEN_AND) {
+        append_list(&c->instr, false_val);
+    } else {
+        append_list(&c->instr, true_val);
+    }
+    set_list(&c->instr, end_jmp_loc, from_double(instr_count(c)));
+
+    if (lhs->eval_type->id != BOOL_TYPE || rhs->eval_type->id != BOOL_TYPE) {
+        error(code->assoc_token->line,
+                TYPE_ERROR,
+                "Cannot do boolean operations on non-booleans.\n");
+        *c->enc_err = 1;
+        return;
+    }
+}
+
 void compile_grouping(Compiler *c, Ast *code) {
     compile(c, code);
 }
@@ -190,6 +298,13 @@ void compile_literal(Compiler *c, Ast *code) {
     } else if (code->assoc_token->type == TOKEN_STR) {
         //TODO: Handle Strings
         code->eval_type = find_type(c, "String");
+    } else if (code->assoc_token->type == TOKEN_TRUE ||
+        code->assoc_token->type == TOKEN_FALSE) {
+        code->eval_type = find_type(c, "Bool");
+        append_list(&c->instr, from_double(PUSOBJ));
+        append_list(&c->instr, from_ptr((void *) code->eval_type));
+        append_list(&c->instr,
+            code->assoc_token->type == TOKEN_TRUE ? true_val : false_val);
     } else if ((code->num_children > 0
             && get_child(code, 0)->type == AST_KEYVAL)
             || code->assoc_token->type == TOKEN_LPAREN) {
@@ -977,8 +1092,8 @@ void compile_pattern(Compiler *c, Ast *code) {
     if (lhs->type == AST_LITERAL) {
         compile(c, lhs);
 
-        if (lhs->eval_type->id == NUM_TYPE) {
-            append_list(&c->instr, from_double(NUM_EQ));
+        if (lhs->eval_type->id == NUM_TYPE || lhs->eval_type->id == BOOL_TYPE) {
+            append_list(&c->instr, from_double(EQ));
         }
     } else if (lhs->type == AST_TYPE) {
         append_list(&c->instr, from_double(CMP_TYPE));

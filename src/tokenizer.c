@@ -116,6 +116,8 @@ void populate_keywords(Hashtable *keywords) {
     set_hashtable(keywords, "type", from_double(TOKEN_TYPE_KEYWORD));
     set_hashtable(keywords, "return", from_double(TOKEN_RETURN));
     set_hashtable(keywords, "match", from_double(TOKEN_MATCH));
+    set_hashtable(keywords, "true", from_double(TOKEN_TRUE));
+    set_hashtable(keywords, "false", from_double(TOKEN_FALSE));
 }
 
 Token *scan_token(Scanner *scan) {
@@ -144,6 +146,9 @@ Token *scan_token(Scanner *scan) {
         case '+': return create_token(scan, TOKEN_PLUS, nil_val);
         case '/': return create_token(scan, TOKEN_SLASH, nil_val);
         case '*': return create_token(scan, TOKEN_STAR, nil_val);
+        case '&':
+            if (match(scan, '&'))
+                return create_token(scan, TOKEN_AND, nil_val);
         case '!':
             return create_token(scan,
                     match(scan, '=') ? TOKEN_NEQ : TOKEN_NOT, nil_val);
@@ -161,7 +166,9 @@ Token *scan_token(Scanner *scan) {
         case '>':
             return create_token(scan,
                 match(scan, '=') ? TOKEN_GTE : TOKEN_GT, nil_val);
-        case '|': return create_token(scan, TOKEN_PIPE, nil_val);
+        case '|':
+            if (match(scan, '|')) return create_token(scan, TOKEN_OR, nil_val);
+            else return create_token(scan, TOKEN_PIPE, nil_val);
         case ' ':
         case '\r':
         case '\t':

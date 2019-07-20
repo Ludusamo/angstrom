@@ -23,19 +23,23 @@ ParseRule rules[] = {
     { NULL, parse_binary, PREC_FACTOR }, // TOKEN_SLASH
     { NULL, parse_binary, PREC_FACTOR }, // TOKEN_STAR
     { parse_unary, NULL, PREC_UNARY }, // TOKEN_NOT
-    { NULL, parse_binary, PREC_COMPARISON }, // TOKEN_NEQ
-    { NULL, parse_binary, PREC_COMPARISON }, // TOKEN_EQ_EQ
+    { NULL, parse_binary, PREC_EQUALITY }, // TOKEN_NEQ
+    { NULL, parse_binary, PREC_EQUALITY }, // TOKEN_EQ_EQ
     { NULL, parse_assign, PREC_ASSIGNMENT }, // TOKEN_EQ
     { NULL, parse_binary, PREC_COMPARISON }, // TOKEN_GT
     { NULL, parse_binary, PREC_COMPARISON }, // TOKEN_GTE
     { NULL, parse_binary, PREC_COMPARISON }, // TOKEN_LT
     { NULL, parse_binary, PREC_COMPARISON }, // TOKEN_LTE
+    { NULL, parse_binary, PREC_AND }, // TOKEN_AND
+    { NULL, parse_binary, PREC_OR }, // TOKEN_OR
     { NULL, NULL, PREC_NONE }, // TOKEN_PIPE
     { NULL, NULL, PREC_NONE }, // TOKEN_THIN_ARROW
     { NULL, NULL, PREC_NONE }, // TOKEN_ARROW
     { parse_var, NULL, PREC_NONE }, // TOKEN_IDENT
     { NULL, NULL, PREC_NONE }, // TOKEN_STR
-    { parse_number, NULL, PREC_NONE }, // TOKEN_NUM
+    { parse_literal, NULL, PREC_NONE }, // TOKEN_NUM
+    { parse_literal, NULL, PREC_NONE }, // TOKEN_TRUE
+    { parse_literal, NULL, PREC_NONE }, // TOKEN_FALSE
     { parse_var_decl, NULL, PREC_ASSIGNMENT }, // TOKEN_VAR
     { parse_lambda, NULL, PREC_NONE }, // TOKEN_FN
     { parse_pattern_matching, NULL, PREC_NONE }, // TOKEN_MATCH
@@ -204,9 +208,10 @@ Ast *parse_grouping(Parser *parser) {
     return expr;
 }
 
-Ast *parse_number(Parser *parser) {
+Ast *parse_literal(Parser *parser) {
     return create_ast(AST_LITERAL, parser->prev);
 }
+
 
 Ast *parse_unary(Parser *parser) {
     const Token *op = parser->prev;
@@ -227,16 +232,33 @@ Ast *parse_binary(Parser *parser) {
     Ast *rhs = parse_precedence(parser, (Precedence) (rule->precedence + 1));
     add_child(op_ast, rhs);
 
-    if (op->type == TOKEN_PLUS || op->type == TOKEN_MINUS) {
-        return op_ast;
-    } else if (op->type == TOKEN_STAR || op->type == TOKEN_SLASH) {
+    switch (op->type) {
+    case TOKEN_STAR:
+    case TOKEN_SLASH:
         op_ast->type = AST_MUL_OP;
-        return op_ast;
+        break;
+    case TOKEN_NEQ:
+    case TOKEN_EQ_EQ:
+    case TOKEN_GT:
+    case TOKEN_GTE:
+    case TOKEN_LT:
+    case TOKEN_LTE:
+        op_ast->type = AST_COMP_OP;
+        break;
+    case TOKEN_AND:
+        op_ast->type = AST_AND_OP;
+        break;
+    case TOKEN_OR:
+        op_ast->type = AST_OR_OP;
+        break;
+    default:
+        error(op->line, UNEXPECTED_TOKEN, "Invalid operator.\n");
+        *parser->enc_err = 1;
+        destroy_ast(op_ast);
+        return NULL;
     }
 
-    error(op->line, UNEXPECTED_TOKEN, "Invalid operator.\n");
-    destroy_ast(op_ast);
-    return NULL;
+    return op_ast;
 }
 
 static Ast *parse_product_type(Parser *parser) {
@@ -357,7 +379,8 @@ Ast *parse_pattern(Parser *parser) {
     Ast *pattern = create_ast(AST_PATTERN, parser->prev);
     Ast *pseudo_return = create_ast(AST_RET_EXPR, parser->prev);
     Ast *ret_block = create_ast(AST_BLOCK, parser->prev);
-    if (match_token(parser, TOKEN_NUM) || match_token(parser, TOKEN_STR)) {
+    if (match_token(parser, TOKEN_TRUE) || match_token(parser, TOKEN_FALSE)
+        || match_token(parser, TOKEN_NUM) || match_token(parser, TOKEN_STR)) {
         add_child(pattern, create_ast(AST_LITERAL, parser->prev));
     } else {
         Ast *type = parse_type(parser);

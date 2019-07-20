@@ -63,7 +63,7 @@ Ast *parse_precedence(Parser *parser, Precedence precedence);
 
 Ast *parse_expression(Parser *parser);
 Ast *parse_grouping(Parser *parser);
-Ast *parse_number(Parser *parser);
+Ast *parse_literal(Parser *parser);
 Ast *parse_unary(Parser *parser);
 Ast *parse_binary(Parser *parser);
 Ast *parse_type(Parser *parser);
