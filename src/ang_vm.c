@@ -92,12 +92,37 @@ void eval(Ang_VM *vm) {
         push_num_stack(vm, left / right);
         break;
     }
-    case NUM_EQ: {
+    case LTZ: {
+        Ang_Obj *result = new_object(&vm->mem,
+            find_type(&vm->compiler, "Bool"));
+        double value = pop_double(&vm->mem);
+        result->v = value < 0 ? true_val : false_val;
+        push_stack(&vm->mem, result);
+        break;
+    }
+    case GTZ: {
+        Ang_Obj *result = new_object(&vm->mem,
+            find_type(&vm->compiler, "Bool"));
+        double value = pop_double(&vm->mem);
+        result->v = value > 0 ? true_val : false_val;
+        push_stack(&vm->mem, result);
+        break;
+    }
+    case EQ: {
         Ang_Obj *result = new_object(&vm->mem,
             find_type(&vm->compiler, "Bool"));
         result->v = pop_stack(&vm->mem)->v.bits == pop_stack(&vm->mem)->v.bits
             ? true_val
             : false_val;
+        push_stack(&vm->mem, result);
+        break;
+    }
+    case NEG: {
+        Ang_Obj *result = new_object(&vm->mem,
+            find_type(&vm->compiler, "Bool"));
+        result->v = pop_stack(&vm->mem)->v.bits == true_val.bits
+            ? false_val
+            : true_val;
         push_stack(&vm->mem, result);
         break;
     }

@@ -26,6 +26,8 @@ void compile_code(Compiler *c, const char *code, const char *src_name);
 void compile(Compiler *c, Ast *code);
 void compile_unary_op(Compiler *c, Ast *code);
 void compile_binary_op(Compiler *c, Ast *code);
+void compile_comp_op(Compiler *c, Ast *code);
+void compile_bool_op(Compiler *c, Ast *code);
 void compile_grouping(Compiler *c, Ast *code);
 void compile_literal(Compiler *c, Ast *code);
 void compile_variable(Compiler *c, Ast *code);

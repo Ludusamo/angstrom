@@ -29,12 +29,16 @@
     code(GTE) \
     code(LT) \
     code(LTE) \
+    code(AND) \
+    code(OR) \
     code(PIPE) \
     code(THIN_ARROW) \
     code(ARROW) \
     code(IDENT) \
     code(STR) \
     code(NUM) \
+    code(TRUE) \
+    code(FALSE) \
     code(VAR) \
     code(FN) \
     code(MATCH) \

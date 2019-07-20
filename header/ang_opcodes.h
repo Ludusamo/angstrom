@@ -16,7 +16,10 @@
     code(SUBF, 0) \
     code(MULF, 0) \
     code(DIVF, 0) \
-    code(NUM_EQ, 0) \
+    code(LTZ, 0) \
+    code(GTZ, 0) \
+    code(EQ, 0) \
+    code(NEG, 0) \
     code(CMP_TYPE, 1) \
     code(CMP_STRUCT, 1) \
     code(JE, 1) \
