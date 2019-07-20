@@ -134,16 +134,27 @@ void compile(Compiler *c, Ast *code) {
 void compile_unary_op(Compiler *c, Ast *code) {
     switch (code->assoc_token->type) {
     case TOKEN_MINUS:
+        code->eval_type = find_type(c, "Num");
+        append_list(&c->instr, from_double(PUSH_0));
+        compile(c, get_child(code, 0));
+        append_list(&c->instr, from_double(SUBF));
         if (get_child(code, 0)->eval_type->id != NUM_TYPE) {
             error(code->assoc_token->line,
                     TYPE_ERROR,
                     "Cannot do unary '-' operations on non-numbers.\n");
             *c->enc_err = 1;
         }
-        code->eval_type = find_type(c, "Num");
-        append_list(&c->instr, from_double(PUSH_0));
+        break;
+    case TOKEN_NOT:
+        code->eval_type = find_type(c, "Bool");
         compile(c, get_child(code, 0));
-        append_list(&c->instr, from_double(SUBF));
+        append_list(&c->instr, from_double(NEG));
+        if (get_child(code, 0)->eval_type->id != BOOL_TYPE) {
+            error(code->assoc_token->line,
+                    TYPE_ERROR,
+                    "Cannot do unary '!' operations on non-booleans.\n");
+            *c->enc_err = 1;
+        }
         break;
     default:
         break;

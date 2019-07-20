@@ -212,7 +212,6 @@ Ast *parse_literal(Parser *parser) {
     return create_ast(AST_LITERAL, parser->prev);
 }
 
-
 Ast *parse_unary(Parser *parser) {
     const Token *op = parser->prev;
     advance_parser(parser);
