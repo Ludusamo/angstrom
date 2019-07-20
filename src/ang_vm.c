@@ -192,6 +192,19 @@ void eval(Ang_VM *vm) {
         push_stack(&vm->mem, get_ptr(access_list(arr, index->v.as_int32)));
         break;
     }
+    case SET_ARR: {
+        Ang_Obj *arr_obj = pop_stack(&vm->mem);
+        Ang_Obj *index = pop_stack(&vm->mem);
+        Ang_Obj *rhs = pop_stack(&vm->mem);
+        List *arr = get_ptr(arr_obj->v);
+        if (!is_int32(index->v) || index->v.as_int32 >= arr->length) {
+            runtime_error(ARR_OUT_OF_BOUNDS,
+                "Attempted to assign out of array bounds.\n");
+        }
+        set_list(arr, index->v.as_int32, from_ptr(rhs));
+        push_stack(&vm->mem, arr_obj);
+        break;
+    }
     case CONS_LAMBDA: {
         Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
         Lambda *l = malloc(sizeof(Lambda));

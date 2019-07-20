@@ -515,7 +515,27 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
     }
 }
 
+static void compile_set_array(Compiler *c, Ast *code) {
+    Ast *rhs = get_child(code, 0);
+    Ast *arr_accessor = get_child(code, 1);
+    Ast *index = get_child(arr_accessor, 0);
+    Ast *arr = get_child(arr_accessor, 1);
+    compile(c, rhs);
+    compile(c, index);
+    compile(c, arr);
+    const Ang_Type *arr_ele_type = get_slot_type(arr->eval_type, 0);
+    if (!type_equality(rhs->eval_type, arr_ele_type)) {
+        error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
+        *c->enc_err = 1;
+        return;
+    }
+    append_list(&c->instr, from_double(SET_ARR));
+}
+
 void compile_assign(Compiler *c, Ast *code) {
+    if (get_child(code, 1)->type == AST_ACCESS_ARRAY) {
+        return compile_set_array(c, code);
+    }
     const char *symbol = get_child(code, 1)->assoc_token->lexeme;
     Symbol *sym = find_symbol(c, symbol);
     if (!sym) {
@@ -534,7 +554,6 @@ void compile_assign(Compiler *c, Ast *code) {
         return;
     }
     compile(c, get_child(code, 0));
-    printf("%s %s\n", sym->type->name, get_child(code, 0)->eval_type->name);
     if (!type_equality(sym->type, get_child(code, 0)->eval_type)) {
         error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
         *c->enc_err = 1;
