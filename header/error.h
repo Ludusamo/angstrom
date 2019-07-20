@@ -20,9 +20,9 @@
     code(INCOMPLETE_RECORD) \
     code(UNKNOWN_AST) \
     code(NON_BLOCK_RETURN) \
-    code(FLOATING_TYPE) \
     code(INVALID_LAMBDA_PARAM) \
     code(NON_LAMBDA_CALL) \
+    code(ARR_OUT_OF_BOUNDS) \
 
 #define DEFINE_ENUM_CODE(type) type,
 typedef enum {

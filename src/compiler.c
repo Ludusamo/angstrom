@@ -65,6 +65,9 @@ void compile(Compiler *c, Ast *code) {
     case AST_LITERAL:
         compile_literal(c, code);
         break;
+    case AST_BIND_LOCAL:
+        compile_bind_local(c, code);
+        break;
     case AST_VARIABLE:
         compile_variable(c, code);
         break;
@@ -94,6 +97,12 @@ void compile(Compiler *c, Ast *code) {
         break;
     case AST_LAMBDA_CALL:
         compile_lambda_call(c, code);
+        break;
+    case AST_ARRAY:
+        compile_array(c, code);
+        break;
+    case AST_ACCESS_ARRAY:
+        compile_array_accessor(c, code);
         break;
     case AST_PLACEHOLD:
         compile_placeholder(c, code);
@@ -307,6 +316,15 @@ void compile_type_decl(Compiler *c, Ast *code) {
     add_type(&c->env, new_type);
 }
 
+void compile_bind_local(Compiler *c, Ast *code) {
+    const Ang_Type *type = compile_type(c, get_child(code, 0));
+    const char *sym = code->assoc_token->lexeme;
+    append_list(&c->instr, from_double(LOAD_REG));
+    append_list(&c->instr, from_double(A));
+    append_list(&c->instr, from_double(DUP));
+    create_symbol(&c->env, sym, type, num_local(c), 0, 1, 0);
+}
+
 void compile_decl(Compiler *c, Ast *code) {
     const Ang_Type *type = find_type(c, "Und");
     int has_assignment = 0;
@@ -497,7 +515,27 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
     }
 }
 
+static void compile_set_array(Compiler *c, Ast *code) {
+    Ast *rhs = get_child(code, 0);
+    Ast *arr_accessor = get_child(code, 1);
+    Ast *index = get_child(arr_accessor, 0);
+    Ast *arr = get_child(arr_accessor, 1);
+    compile(c, rhs);
+    compile(c, index);
+    compile(c, arr);
+    const Ang_Type *arr_ele_type = get_slot_type(arr->eval_type, 0);
+    if (!type_equality(rhs->eval_type, arr_ele_type)) {
+        error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
+        *c->enc_err = 1;
+        return;
+    }
+    append_list(&c->instr, from_double(SET_ARR));
+}
+
 void compile_assign(Compiler *c, Ast *code) {
+    if (get_child(code, 1)->type == AST_ACCESS_ARRAY) {
+        return compile_set_array(c, code);
+    }
     const char *symbol = get_child(code, 1)->assoc_token->lexeme;
     Symbol *sym = find_symbol(c, symbol);
     if (!sym) {
@@ -516,7 +554,6 @@ void compile_assign(Compiler *c, Ast *code) {
         return;
     }
     compile(c, get_child(code, 0));
-    printf("%s %s\n", sym->type->name, get_child(code, 0)->eval_type->name);
     if (!type_equality(sym->type, get_child(code, 0)->eval_type)) {
         error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
         *c->enc_err = 1;
@@ -628,7 +665,7 @@ static Ang_Type *get_lambda_type(
     return lambda_type;
 }
 
-static char *construct_array_type_name(Compiler *c, Ang_Type *contains) {
+static char *construct_array_type_name(Compiler *c, const Ang_Type *contains) {
     // [TYPE]
     size_t name_size = 3 + strlen(contains->name);
     char *type_name = calloc(name_size, sizeof(char));
@@ -639,7 +676,7 @@ static char *construct_array_type_name(Compiler *c, Ang_Type *contains) {
     return type_name;
 }
 
-static Ang_Type *get_array_type(Compiler *c, Ang_Type *contains) {
+static Ang_Type *get_array_type(Compiler *c, const Ang_Type *contains) {
     char *name = construct_array_type_name(c, contains);
     Ang_Type *type = find_type(c, name);
     if (!type) {
@@ -649,7 +686,7 @@ static Ang_Type *get_array_type(Compiler *c, Ang_Type *contains) {
         type->slot_types = calloc(1, sizeof(List));
         ctor_list(type->slot_types);
         ctor_hashtable(type->slots);
-        append_list(type->slot_types, from_ptr(contains));
+        append_list(type->slot_types, from_ptr((void *) contains));
         add_type(&get_root_compiler(c)->env, type);
     } else {
         free(name);
@@ -825,6 +862,9 @@ void compile_block(Compiler *c, Ast *code) {
     for (size_t i = 0; i < code->num_children; i++) {
         Ast *child = get_child(code, i);
         compile(&block, child);
+        if (*c->enc_err) {
+            break;
+        }
         if (i + 1 != code->num_children)
             append_list(&block.instr, from_double(POP));
 
@@ -961,13 +1001,6 @@ void compile_pattern(Compiler *c, Ast *code) {
     }
 
     code->eval_type = rhs->eval_type;
-
-    // Set all return jump locations to here
-    //Value end_jmp = from_double(instr_count(c));
-    //for (size_t i = 0; i < c->jmp_locs.length; i++) {
-    //    int jmp_instr = access_list(&c->jmp_locs, i).as_int32;
-    //    set_list(&c->instr, jmp_instr, end_jmp);
-    //}
 }
 
 void compile_match(Compiler *c, Ast *code) {
@@ -981,6 +1014,61 @@ void compile_match(Compiler *c, Ast *code) {
     compile_block(c, block);
 
     code->eval_type = block->eval_type;
+}
+
+void compile_array(Compiler *c, Ast *code) {
+    const Ang_Type *ele_type = NULL;
+    for (int i = code->num_children - 1; i >= 0; i--) {
+        Ast *child = get_child(code, i);
+        compile(c, child);
+        if (!ele_type) ele_type = child->eval_type;
+        else if (!type_equality(ele_type, child->eval_type)) {
+            error(child->assoc_token->line,
+                TYPE_ERROR,
+                "Elements in array literal are not all of the same type.\n");
+            *c->enc_err = 1;
+            break;
+        }
+    }
+    if (!ele_type) ele_type = find_type(c, "Any");
+    Ang_Type *t = get_array_type(c, ele_type);
+    append_list(&c->instr, from_double(CONS_ARR));
+    append_list(&c->instr, from_ptr(t));
+    append_list(&c->instr, from_double(code->num_children));
+    code->eval_type = t;
+}
+
+void compile_array_accessor(Compiler *c, Ast *code) {
+    Ast *index_ast = get_child(code, 0);
+    compile(c, index_ast);
+    if (index_ast->eval_type->id != NUM_TYPE) {
+        error(index_ast->assoc_token->line,
+            TYPE_ERROR,
+            "Expected number type for index of array.\n");
+        *c->enc_err = 1;
+        return;
+    }
+
+    Ast *array_ast = get_child(code, 1);
+    compile(c, array_ast);
+    if (array_ast->eval_type->cat != ARRAY) {
+        error(array_ast->assoc_token->line,
+            TYPE_ERROR,
+            "Cannot use accessor on a non-array.\n");
+        *c->enc_err = 1;
+        return;
+    }
+    const Ang_Type *array_type = array_ast->eval_type;
+
+    List nullable_types;
+    ctor_list(&nullable_types);
+    append_list(&nullable_types, from_ptr((void *) get_slot_type(array_type, 0)));
+    append_list(&nullable_types, from_ptr(find_type(c, "Null")));
+    Ang_Type *ret_type = get_sum_type(c, &nullable_types);
+    dtor_list(&nullable_types);
+
+    append_list(&c->instr, from_double(ACCESS_ARR));
+    code->eval_type = ret_type;
 }
 
 void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
@@ -1006,6 +1094,7 @@ void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
         // Push on the type of the object
         Value type_val = from_ptr((void *) t);
         append_list(&c->instr, type_val);
+        append_list(&c->instr, from_double(0));
     } else if (t->cat == SUM) {
         push_default_value(c, get_ptr(access_list(t->slot_types, 0)), default_value);
     } else if (t->cat == LAMBDA) {

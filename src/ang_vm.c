@@ -6,6 +6,7 @@
 #include "ang_primitives.h"
 #include "ang_debug.h"
 #include "lambda.h"
+#include <math.h>
 
 void ctor_ang_vm(Ang_VM *vm, size_t gmem_size) {
     ctor_memory(&vm->mem, gmem_size);
@@ -170,10 +171,38 @@ void eval(Ang_VM *vm) {
     }
     case CONS_ARR: {
         Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
+        int num_ele = get_next_op(vm).as_int32;
         List *l = malloc(sizeof(List));
         ctor_list(l);
+        for (int i = 0; i < num_ele; i++) {
+            append_list(l, from_ptr(pop_stack(&vm->mem)));
+        }
         obj->v = from_ptr(l);
         push_stack(&vm->mem, obj);
+        break;
+    }
+    case ACCESS_ARR: {
+        Ang_Obj *arr_obj = pop_stack(&vm->mem);
+        Ang_Obj *index = pop_stack(&vm->mem);
+        List *arr = get_ptr(arr_obj->v);
+        if (!is_int32(index->v) || index->v.as_int32 >= arr->length) {
+            push_stack(&vm->mem,
+                new_object(&vm->mem, find_type(&vm->compiler, "Null")));
+        }
+        push_stack(&vm->mem, get_ptr(access_list(arr, index->v.as_int32)));
+        break;
+    }
+    case SET_ARR: {
+        Ang_Obj *arr_obj = pop_stack(&vm->mem);
+        Ang_Obj *index = pop_stack(&vm->mem);
+        Ang_Obj *rhs = pop_stack(&vm->mem);
+        List *arr = get_ptr(arr_obj->v);
+        if (!is_int32(index->v) || index->v.as_int32 >= arr->length) {
+            runtime_error(ARR_OUT_OF_BOUNDS,
+                "Attempted to assign out of array bounds.\n");
+        }
+        set_list(arr, index->v.as_int32, from_ptr(rhs));
+        push_stack(&vm->mem, arr_obj);
         break;
     }
     case CONS_LAMBDA: {

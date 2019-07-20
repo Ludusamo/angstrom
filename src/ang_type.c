@@ -125,3 +125,7 @@ void add_slot(Ang_Type *type, const char *sym, const Ang_Type *slot_type) {
     set_hashtable(type->slots, sym, from_double(slot_num));
     append_list(type->slot_types, from_ptr((void *) slot_type));
 }
+
+const Ang_Type *get_slot_type(const Ang_Type *type, int slot_num) {
+    return get_ptr(access_list(type->slot_types, slot_num));
+}

@@ -32,8 +32,9 @@ void print_ang_obj(const Ang_Obj *obj) {
         List *slots = get_ptr(v);
         for (size_t i = 0; i < slots->length; i++) {
             print_ang_obj(get_ptr(access_list(slots, i)));
+            if (i + 1 != slots->length) fprintf(stderr, ", ");
         }
-        fprintf(stderr, "]");
+        fprintf(stderr, " ]");
     } else if (is_double(v)) {
         fprintf(stderr, "%.2lf", v.as_double);
     } else if (is_int32(v))

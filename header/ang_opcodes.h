@@ -29,7 +29,9 @@
     code(PUSRET, 0) \
     code(CONS_TUPLE, 2) \
     code(LOAD_TUPLE, 0) \
-    code(CONS_ARR, 1) \
+    code(CONS_ARR, 2) \
+    code(ACCESS_ARR, 0) \
+    code(SET_ARR, 0) \
     code(CONS_LAMBDA, 2) \
     code(SET_FP, 0) \
     code(RESET_FP, 0) \

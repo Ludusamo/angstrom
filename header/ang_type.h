@@ -38,4 +38,6 @@ int type_structure_equality(const Ang_Type *t1, const Ang_Type *t2);
 
 void add_slot(Ang_Type *type, const char *sym, const Ang_Type *slot_type);
 
+const Ang_Type *get_slot_type(const Ang_Type *type, int slot_num);
+
 #endif // ANG_TYPE_H

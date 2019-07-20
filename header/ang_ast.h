@@ -14,6 +14,7 @@
     code(ADD_OP) \
     code(MUL_OP) \
     code(UNARY_OP) \
+    code(BIND_LOCAL) \
     code(VAR_DECL) \
     code(TYPE_DECL) \
     code(DESTR_DECL) \
@@ -25,11 +26,13 @@
     code(LAMBDA_TYPE) \
     code(ARRAY_TYPE) \
     code(ACCESSOR) \
+    code(ACCESS_ARRAY) \
     code(VARIABLE) \
     code(WILDCARD) \
     code(RET_EXPR) \
     code(KEYVAL) \
     code(PLACEHOLD) \
+    code(ARRAY) \
     code(LAMBDA_LIT) \
     code(LAMBDA_CALL) \
     code(PATTERN_MATCH) \

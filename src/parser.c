@@ -11,7 +11,7 @@ ParseRule rules[] = {
     { NULL, NULL, PREC_NONE }, // TOKEN_RPAREN
     { parse_block, NULL, PREC_NONE }, // TOKEN_LBRACE
     { NULL, NULL, PREC_NONE }, // TOKEN_RBRACE
-    { NULL, NULL, PREC_NONE }, // TOKEN_LBRACK
+    { parse_array, parse_access_array, PREC_CALL }, // TOKEN_LBRACK
     { NULL, NULL, PREC_NONE }, // TOKEN_RBRACK
     { NULL, NULL, PREC_NONE }, // TOKEN_COMMA
     { NULL, NULL, PREC_NONE }, // TOKEN_COLON
@@ -264,6 +264,10 @@ Ast *parse_type(Parser *parser) {
         type = create_ast(AST_WILDCARD, parser->prev);
     } else if (match_token(parser, TOKEN_LPAREN)) {
         type = parse_product_type(parser);
+    } else if (match_token(parser, TOKEN_LBRACK)) {
+        type = create_ast(AST_ARRAY_TYPE, parser->prev);
+        add_child(type, parse_type(parser));
+        consume_token(parser, TOKEN_RBRACK, "Expected closing ']' in type.\n");
     }
     if (match_token(parser, TOKEN_PIPE)) {
         type = add_child( create_ast(AST_SUM_TYPE, parser->prev), type);
@@ -361,6 +365,15 @@ Ast *parse_pattern(Parser *parser) {
             return NULL;
         } else if (type->type == AST_WILDCARD) {
             add_child(pattern, type);
+        } else if (type->type == AST_KEYVAL) {
+            Ast *type_ast = get_child(type, 0);
+            add_child(pattern, copy_ast(type_ast));
+            // Binds local with appropriate type
+            Ast *bind_local = create_ast(AST_BIND_LOCAL, type->assoc_token);
+            add_child(bind_local, copy_ast(type_ast));
+            add_child(ret_block, bind_local);
+            destroy_ast(type);
+            free(type);
         } else if (type->type == AST_PRODUCT_TYPE) {
             add_child(pattern, copy_ast(type));
             add_child(ret_block, type_to_destr(type));
@@ -455,4 +468,30 @@ Ast *parse_type_decl(Parser *parser) {
         add_child(type, parse_type(parser));
     }
     return type;
+}
+
+Ast *parse_array(Parser *parser) {
+    Ast *arr = create_ast(AST_ARRAY, parser->prev);
+    if (match_token(parser, TOKEN_RBRACK)) return arr;
+    Ast *ele = parse_expression(parser);
+    if (ele) {
+        add_child(arr, ele);
+        while (match_token(parser, TOKEN_COMMA)) {
+            add_child(arr, parse_expression(parser));
+        }
+    }
+
+    consume_token(parser,
+        TOKEN_RBRACK,
+        "Expected closing ']' at the end of array literal.\n");
+    return arr;
+}
+
+Ast *parse_access_array(Parser *parser) {
+    Ast *access = create_ast(AST_ACCESS_ARRAY, parser->prev);
+    add_child(access, parse_expression(parser));
+    consume_token(parser,
+        TOKEN_RBRACK,
+        "Expected closing ']' at the end of accessor.\n");
+    return access;
 }

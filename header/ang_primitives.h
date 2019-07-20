@@ -9,6 +9,7 @@
     code(NUM_TYPE) \
     code(BOOL_TYPE) \
     code(STRING_TYPE) \
+    code(NULL_TYPE) \
     code(PRIMITIVE_COUNT)
 
 #define DEFINE_ENUM_TYPE(type) type,
@@ -24,6 +25,7 @@ typedef struct {
     Ang_Type bool_default;
     Ang_Type string_default;
     Ang_Type tuple_default;
+    Ang_Type null_default;
 } Primitive_Types;
 
 void ctor_primitive_types(Primitive_Types *defaults);
