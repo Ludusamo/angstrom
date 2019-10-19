@@ -236,6 +236,10 @@ Ast *parse_binary(Parser *parser) {
     case TOKEN_SLASH:
         op_ast->type = AST_MUL_OP;
         break;
+    case TOKEN_PLUS:
+    case TOKEN_MINUS:
+        op_ast->type = AST_ADD_OP;
+        break;
     case TOKEN_NEQ:
     case TOKEN_EQ_EQ:
     case TOKEN_GT:
