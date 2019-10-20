@@ -1,0 +1,125 @@
+---
+# AST Structures for Angstrom
+
+AstList:
+  Literal:
+    description: |
+      AST represents a literal value. Valid literal values are numbers, strings,
+      and booleans.
+    token: literal
+    children: null
+  Block:
+    description: |
+      AST Grouping a set of expressions. The block evaluates to any return
+      expressions as its children, or the last expression in the block.
+    token: null
+    children: [expression, ...]
+  EqualityOperator:
+    description: |
+      AST representing checking the equality of two expressions.
+    token: operator
+    children: [expression, expression]
+  AndOperator:
+    description: |
+      AST representing the boolean and of two expressions.
+    token: operator
+    children: [expression, expression]
+  OrOperator:
+    description: |
+      AST representing the boolean or of two expressions.
+    token: operator
+    children: [expression, expression]
+  UnaryOperator:
+    description: |
+      AST representing unary operation on an expression.
+    token: operator
+    children: [expression]
+  BindLocal:
+    description: |
+      AST representing the operation to bind a local variable. Must have either
+      the type, an assignment expression, or both. Binds locally for pattern
+      matching.
+    token: symbol
+    children: [expression, type]
+  Variable:
+    description: |
+      AST representing a bound variable.
+    token: symbol
+    children: null
+  KeyVal:
+    description: |
+      AST representing a key value pair. The token is the key and the child is
+      the value.
+    token: symbol
+    children: [expression]
+  Accessor:
+    description: |
+      AST representing the accessor action of a tuple.
+    token: null
+    children: [slot_name, tuple]
+  TypeDeclaration:
+    description: |
+      AST representing the declaration of a type.
+    token: symbol
+    children: [type]
+  VarDeclaration:
+    description: |
+      AST representing a variable declaration. Must have either the type, an
+      assignment expression, or both. Binds locally for pattern matching.
+    token: symbol
+    children: [expression, type]
+  DestructorDeclaration:
+    description: |
+      AST representing a destructor declaration. Destructs a tuple into multiple
+      variables. Must have either the type, an assignment expression, or both.
+    token: null
+    children: [tuple, expression, type]
+  Assign:
+    description:
+      AST representing an assignment to a variable or array slot.
+    token: null
+    children: [expression, symbol | access_array]
+  LambdaLiteral:
+    description: |
+      AST representing a lambda literal value.
+    token: null
+    children: [block]
+  LambdaCall:
+    description: |
+      AST representing a call to a lambda literal.
+    token: null
+    children: [tuple, lambda_literal]
+  Array:
+    description: |
+      AST representing an array literal. Children are expressions that are in
+      the array.
+    token: null
+    children: [expression, ...]
+  ArrayAccessor:
+    description: |
+      AST representing an array accessor.
+    token: null
+    children: [num, array_literal]
+  Placehold:
+    description: |
+      AST representing a placeholder for pattern match to destruct tuples into
+      local variables.
+    token: null
+    children: [type]
+  PatternMatch:
+    description: |
+      AST representing a pattern match construct.
+    token: null
+    children: [expression, block]
+  Pattern:
+    description: |
+      AST representing a pattern case for pattern match.
+    token: null
+    children: [type, expression]
+  Return:
+    description: |
+      AST representing a return from a block.
+    token: null
+    children: [expression]
+
+...
