@@ -6,6 +6,7 @@
 #include "ang_mem.h"
 #include "list.h"
 #include "compiler.h"
+#include "hashtable.h"
 
 #define INSTR(vm) vm->compiler.instr
 
@@ -14,9 +15,12 @@ typedef struct {
     int running;
     int trace;
     int enc_err;
+    Hashtable foreign_functions;
 
     Compiler compiler;
 } Ang_VM;
+
+typedef int (*ForeignFunctionPtr)(Ang_VM *);
 
 void ctor_ang_vm(Ang_VM *vm, size_t gmem_size);
 void dtor_ang_vm(Ang_VM *vm);
@@ -32,5 +36,8 @@ void push_num_stack(Ang_VM *vm, double num);
 void run_compiled_instructions(Ang_VM *vm, Compiler *c);
 
 void run_code(Ang_VM *vm, const char *code, const char *src_name);
+
+Ang_Obj *run_foreign_function(Ang_VM *vm, ForeignFunctionPtr ff);
+int add_foreign_function(Ang_VM *vm, const char *name, ForeignFunctionPtr ff);
 
 #endif // ANG_VM_H

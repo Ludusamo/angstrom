@@ -14,6 +14,7 @@ void ctor_ang_vm(Ang_VM *vm, size_t gmem_size) {
     vm->trace = 0;
     vm->enc_err = 0;
     vm->compiler.enc_err = &vm->enc_err;
+    ctor_hashtable(&vm->foreign_functions);
     ctor_compiler(&vm->compiler);
 }
 
@@ -329,4 +330,21 @@ void run_code(Ang_VM *vm, const char *code, const char *src_name) {
     if (vm->enc_err) return;
     vm->mem.global_size = vm->compiler.env.symbols.size;
     while (vm->mem.ip < INSTR(vm).length) eval(vm);
+}
+
+Ang_Obj *run_foreign_function(Ang_VM *vm, ForeignFunctionPtr ff) {
+    if (ff(vm)) {
+        runtime_error(FOREIGN_FUNCTION_FAILURE,
+            "Foreign function terminated with failure.");
+        vm->enc_err = 1;
+    }
+    return pop_stack(&vm->mem);
+}
+
+int add_foreign_function(Ang_VM *vm, const char *name, ForeignFunctionPtr ff) {
+    if (access_hashtable(&vm->foreign_functions, name).bits != nil_val.bits) {
+        return 0;
+    }
+    set_hashtable(&vm->foreign_functions, name, from_ptr(ff));
+    return 1;
 }

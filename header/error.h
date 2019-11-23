@@ -23,6 +23,7 @@
     code(INVALID_LAMBDA_PARAM) \
     code(NON_LAMBDA_CALL) \
     code(ARR_OUT_OF_BOUNDS) \
+    code(FOREIGN_FUNCTION_FAILURE) \
 
 #define DEFINE_ENUM_CODE(type) type,
 typedef enum {

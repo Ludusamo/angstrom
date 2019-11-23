@@ -46,6 +46,7 @@
     code(MOV_REG, 2) \
     code(JMP, 1) \
     code(CALL, 0) \
+    code(CALL_FF, 0) \
     code(RET, 0)
 
 #define DEFINE_ENUM_TYPE(type, _) type,
