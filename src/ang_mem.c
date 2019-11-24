@@ -59,7 +59,8 @@ void sweep_mem(Memory *mem) {
     while (*obj) {
         if (!(*obj)->marked) {
             if ((*obj)->type->cat != PRIMITIVE &&
-                    (*obj)->type->cat != LAMBDA) { // Is a user defined type
+                    (*obj)->type->cat != LAMBDA &&
+                    (*obj)->type->cat != FOREIGN_FUNCTION) { // Is a user defined type
                 List *tuple_val = get_ptr((*obj)->v);
                 dtor_list(tuple_val);
                 free(tuple_val);

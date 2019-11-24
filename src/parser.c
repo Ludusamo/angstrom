@@ -187,6 +187,9 @@ Ast *parse_expression(Parser *parser) {
 
 Ast *parse_grouping(Parser *parser) {
     Token *paren = parser->prev;
+    if (match_token(parser, TOKEN_RPAREN)) {
+        return create_ast(AST_LITERAL, parser->prev);
+    }
     Ast *expr = parse_expression(parser);
 
      if (match_token(parser, TOKEN_COMMA)) {

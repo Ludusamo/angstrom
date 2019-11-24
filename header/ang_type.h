@@ -9,7 +9,8 @@ typedef enum {
     PRODUCT,
     LAMBDA,
     PARAMETRIC,
-    ARRAY
+    ARRAY,
+    FOREIGN_FUNCTION
 } Type_Category;
 
 typedef struct {

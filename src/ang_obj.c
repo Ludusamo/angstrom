@@ -39,6 +39,8 @@ void print_ang_obj(const Ang_Obj *obj) {
         fprintf(stderr, "%.2lf", v.as_double);
     } else if (is_int32(v))
         fprintf(stderr, "%d", v.as_int32);
+    else if (v.bits == nil_val.bits)
+        fprintf(stderr, "NULL");
     else if (is_ptr(v)) {
         fprintf(stderr, "<%s>", t->name);
     }

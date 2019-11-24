@@ -25,7 +25,8 @@ void dtor_ang_env(Ang_Env *env) {
             (t->cat == PRODUCT ||
              t->cat == ARRAY ||
              t->cat == SUM ||
-             t->cat == LAMBDA)) {
+             t->cat == LAMBDA ||
+             t->cat == FOREIGN_FUNCTION)) {
             free((void*) t->name);
 
             if (t->cat == PRODUCT) {

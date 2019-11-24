@@ -316,6 +316,11 @@ void compile_literal(Compiler *c, Ast *code) {
         append_list(&c->instr, from_ptr((void *) code->eval_type));
         append_list(&c->instr,
             code->assoc_token->type == TOKEN_TRUE ? true_val : false_val);
+    } else if (code->assoc_token->type == TOKEN_RPAREN) {
+        code->eval_type = find_type(c, "Null");
+        append_list(&c->instr, from_double(PUSOBJ));
+        append_list(&c->instr, from_ptr((void *) code->eval_type));
+        append_list(&c->instr, nil_val);
     } else if ((code->num_children > 0
             && get_child(code, 0)->type == AST_KEYVAL)
             || code->assoc_token->type == TOKEN_LPAREN) {
@@ -1064,10 +1069,15 @@ void compile_lambda_call(Compiler *c, Ast *code) {
     compile(c, param);
 
     const Ang_Type *lambda_type = lambda->eval_type;
+    if (lambda_type->cat == FOREIGN_FUNCTION) {
+        code->eval_type = get_ptr(access_list(lambda_type->slot_types, 0));
+        append_list(&c->instr, from_double(CALL_FF));
+        return;
+    }
     if (!lambda_type || lambda_type->cat != LAMBDA) {
         error(code->assoc_token->line,
             NON_LAMBDA_CALL,
-            "Cannot call a non-lambda.\n");
+            "Cannot call a non-lambda or non foreign function.\n");
         *c->enc_err = 1;
         return;
     }

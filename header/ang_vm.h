@@ -38,6 +38,6 @@ void run_compiled_instructions(Ang_VM *vm, Compiler *c);
 void run_code(Ang_VM *vm, const char *code, const char *src_name);
 
 Ang_Obj *run_foreign_function(Ang_VM *vm, const char *name);
-int add_foreign_function(Ang_VM *vm, const char *name, ForeignFunctionPtr ff);
+int add_foreign_function(Ang_VM *vm, const char *name, ForeignFunctionPtr ff_ptr, Ang_Type *ret_type);
 
 #endif // ANG_VM_H

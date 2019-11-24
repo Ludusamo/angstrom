@@ -14,13 +14,14 @@ void ctor_ang_vm(Ang_VM *vm, size_t gmem_size) {
     vm->trace = 0;
     vm->enc_err = 0;
     vm->compiler.enc_err = &vm->enc_err;
-    ctor_hashtable(&vm->foreign_functions);
     ctor_compiler(&vm->compiler);
+    ctor_hashtable(&vm->foreign_functions);
 }
 
 void dtor_ang_vm(Ang_VM *vm) {
     dtor_memory(&vm->mem);
     dtor_compiler(&vm->compiler);
+    dtor_hashtable(&vm->foreign_functions);
 }
 
 Value get_next_op(Ang_VM *vm) {
@@ -294,7 +295,11 @@ void eval(Ang_VM *vm) {
         break;
     }
     case CALL_FF: {
-        push_stack(&vm->mem, run_foreign_function(vm, get_ptr(get_next_op(vm))));
+        vm->mem.registers[A] = pop_stack(&vm->mem);
+        const char *ff_name = get_ptr(pop_stack(&vm->mem)->v);
+        Ang_Obj *res = run_foreign_function(vm, ff_name);
+        if (res) push_stack(&vm->mem, res);
+        break;
     }
     case RET:
         vm->mem.registers[RET_VAL] = pop_stack(&vm->mem);
@@ -336,18 +341,29 @@ void run_code(Ang_VM *vm, const char *code, const char *src_name) {
 }
 
 Ang_Obj *run_foreign_function(Ang_VM *vm, const char *fn_name) {
-    if (ff(get_ptr(access_hashtable(&vm->foreign_functions, fn_name)))) {
+    ForeignFunctionPtr ff = get_ptr(access_hashtable(&vm->foreign_functions, fn_name));
+    if (!ff(vm)) {
         runtime_error(FOREIGN_FUNCTION_FAILURE,
-            "Foreign function terminated with failure.");
+            "Foreign function terminated with failure.\n");
         vm->enc_err = 1;
+        return NULL;
     }
     return pop_stack(&vm->mem);
 }
 
-int add_foreign_function(Ang_VM *vm, const char *name, ForeignFunctionPtr ff) {
-    if (access_hashtable(&vm->foreign_functions, name).bits != nil_val.bits) {
+int add_foreign_function(Ang_VM *vm, const char *name, ForeignFunctionPtr ff_ptr, Ang_Type *ret_type) {
+    if (symbol_exists(&vm->compiler.env, name)) {
         return 0;
     }
-    set_hashtable(&vm->foreign_functions, name, from_ptr(ff));
+    Ang_Type *ff_type = find_type(&vm->compiler, "ForeignFunction => Num");
+    int loc = vm->compiler.env.symbols.size;
+    create_symbol(&vm->compiler.env, name, ff_type, loc, 0, 1, 1);
+    append_list(&vm->compiler.instr, from_double(PUSOBJ));
+    append_list(&vm->compiler.instr, from_ptr(ff_type));
+    append_list(&vm->compiler.instr, from_ptr((void *)name));
+    append_list(&vm->compiler.instr, from_double(GSTORE));
+    append_list(&vm->compiler.instr, from_double(loc));
+
+    set_hashtable(&vm->foreign_functions, name, from_ptr(ff_ptr));
     return 1;
 }

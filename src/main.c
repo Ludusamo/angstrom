@@ -55,7 +55,19 @@ static char *read_file(const char *file_path) {
 }
 
 static void load_libraries(Ang_VM *vm) {
-    add_foreign_function(vm, "time", ang_time);
+    // Setup ForeignFunction to num type
+    Ang_Type *ff_num_type = malloc(sizeof(Ang_Type));
+    char *name = calloc(strlen("ForeignFunction => Num") + 1, sizeof(char));
+    sprintf(name, "ForeignFunction => Num");
+    ctor_ang_type(ff_num_type, num_types(&vm->compiler), name, FOREIGN_FUNCTION, nil_val);
+    ff_num_type->slot_types = calloc(1, sizeof(List));
+    ff_num_type->slots = calloc(1, sizeof(Hashtable));
+    ctor_hashtable(ff_num_type->slots);
+    ctor_list(ff_num_type->slot_types);
+    append_list(ff_num_type->slot_types, from_ptr(find_type(&vm->compiler, "Num")));
+    add_type(&vm->compiler.env, ff_num_type);
+
+    add_foreign_function(vm, "time", ang_time, find_type(&vm->compiler, "Num"));
 }
 
 void run_script(char *file_path) {

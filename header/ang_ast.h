@@ -38,7 +38,7 @@
     code(LAMBDA_LIT) \
     code(LAMBDA_CALL) \
     code(PATTERN_MATCH) \
-    code(PATTERN)
+    code(PATTERN) \
 
 #define DEFINE_ENUM_TYPE(type) AST_##type,
 typedef enum {
