@@ -7,6 +7,7 @@
 #include "ang_type.h"
 #include "compiler.h"
 #include "ang_primitives.h"
+#include "ang_time.h"
 
 static char *get_line(void) {
     char * line = malloc(100), * linep = line;
@@ -53,6 +54,10 @@ static char *read_file(const char *file_path) {
     return file_contents;
 }
 
+static void load_libraries(Ang_VM *vm) {
+    add_foreign_function(vm, "time", ang_time);
+}
+
 void run_script(char *file_path) {
     Ang_VM vm;
     ctor_ang_vm(&vm, 100);
@@ -67,6 +72,7 @@ void run_script(char *file_path) {
     set_hashtable(&vm.compiler.env.types, "Bool", from_ptr(&defaults.bool_default));
     set_hashtable(&vm.compiler.env.types, "String", from_ptr(&defaults.string_default));
     set_hashtable(&vm.compiler.env.types, "Null", from_ptr(&defaults.null_default));
+    load_libraries(&vm);
 
     char *file_contents = read_file(file_path);
     run_code(&vm, file_contents, file_path);
@@ -91,6 +97,8 @@ void run_repl() {
     set_hashtable(&vm.compiler.env.types, "Bool", from_ptr(&defaults.bool_default));
     set_hashtable(&vm.compiler.env.types, "String", from_ptr(&defaults.string_default));
     set_hashtable(&vm.compiler.env.types, "Null", from_ptr(&defaults.null_default));
+    load_libraries(&vm);
+
     char *expr;
     for (;;) {
         printf("> ");

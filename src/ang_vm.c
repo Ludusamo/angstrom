@@ -293,6 +293,9 @@ void eval(Ang_VM *vm) {
         vm->mem.ip = ip;
         break;
     }
+    case CALL_FF: {
+        push_stack(&vm->mem, run_foreign_function(vm, get_ptr(get_next_op(vm))));
+    }
     case RET:
         vm->mem.registers[RET_VAL] = pop_stack(&vm->mem);
         vm->mem.sp = vm->mem.fp;
@@ -332,8 +335,8 @@ void run_code(Ang_VM *vm, const char *code, const char *src_name) {
     while (vm->mem.ip < INSTR(vm).length) eval(vm);
 }
 
-Ang_Obj *run_foreign_function(Ang_VM *vm, ForeignFunctionPtr ff) {
-    if (ff(vm)) {
+Ang_Obj *run_foreign_function(Ang_VM *vm, const char *fn_name) {
+    if (ff(get_ptr(access_hashtable(&vm->foreign_functions, fn_name)))) {
         runtime_error(FOREIGN_FUNCTION_FAILURE,
             "Foreign function terminated with failure.");
         vm->enc_err = 1;

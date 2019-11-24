@@ -45,7 +45,7 @@ $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
 osx:
 	make
 	cp C-Data-Structures/bin/libcds.so ./bin/libcds.so
-	
+
 termux:
 	make
 	cp C-Data-Structures/bin/libcds.so ~/../usr/lib/libcds.so
