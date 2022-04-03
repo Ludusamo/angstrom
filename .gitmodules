@@ -1,3 +1,3 @@
 [submodule "C-Data-Structures"]
 	path = C-Data-Structures
-	url = https://github.com/Ludusamo/C-Data-Structures.git
+	url = git@github.com:Ludusamo/C-Data-Structures.git
