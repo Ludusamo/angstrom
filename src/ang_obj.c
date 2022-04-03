@@ -37,9 +37,26 @@ void print_ang_obj(const Ang_Obj *obj) {
         fprintf(stderr, " ]");
     } else if (is_double(v)) {
         fprintf(stderr, "%.2lf", v.as_double);
-    } else if (is_int32(v))
+    } else if (is_int32(v)) {
         fprintf(stderr, "%d", v.as_int32);
-    else if (is_ptr(v)) {
+    } else if (t->cat == PRODUCT) {
+        fprintf(stderr, "(");
+        List *values = get_ptr(v);
+        int i = 0;
+        Iter iter;
+        iter_hashtable(&iter, t->slots);
+        foreach(iter) {
+            const Keyval *slot = get_ptr(val_iter_hashtable(&iter));
+            fprintf(stderr, "%s: ", slot->key);
+            Ang_Obj *val = get_ptr(access_list(values, i++));
+            print_ang_obj(val);
+            if (i < values->length) {
+                fprintf(stderr, ", ");
+            }
+        }
+        fprintf(stderr, ")");
+        destroy_iter_hashtable(&iter);
+    } else {
         fprintf(stderr, "<%s>", t->name);
     }
 }
