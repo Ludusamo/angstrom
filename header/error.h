@@ -3,6 +3,7 @@
 
 #define ERROR_LIST(code) \
     code(UNEXPECTED_CHARACTER) \
+    code(NO_RHS) \
     code(UNEXPECTED_TOKEN) \
     code(UNTERMINATED_STRING) \
     code(STACK_OVERFLOW) \

@@ -106,7 +106,7 @@ void dtor_parser(Parser *parser) {
 }
 
 static Ast *record_type_to_destr(Ast *type) {
-    Ast * lit = create_ast(AST_LITERAL, type->assoc_token);
+    Ast *lit = create_ast(AST_LITERAL, type->assoc_token);
     for (size_t i = 0; i < type->num_children; i++) {
         Ast *child = get_child(type, i);
         if (child->type == AST_TYPE) {
@@ -124,16 +124,26 @@ static Ast *record_type_to_destr(Ast *type) {
     return lit;
 }
 
-static Ast *type_to_destr(Ast *type) {
+static Ast *type_to_destr(Ast *type, Parser *parser) {
     Ast *destr = 0;
     if (type->num_children != 0) {
         if (type->num_children == 1) {
             // Variable declaration
-            const Token * var_name = get_child(type, 0)->assoc_token;
+            const Token *var_name = get_child(type, 0)->assoc_token;
             destr = create_ast(AST_VAR_DECL, var_name);
 
             // only one type
             Ast *ptype = get_child(get_child(type, 0), 0);
+            if (!ptype) {
+                error(get_child(type, 0)->assoc_token->line,
+                      TYPE_ERROR,
+                      "malformed type specified for destructor\n");
+                destroy_ast(type);
+                free(type);
+                type = 0;
+                *parser->enc_err = 1;
+                return destr;
+            }
             Ast *copy = create_ast(ptype->type, ptype->assoc_token);
             destroy_ast(type);
             free(type);
@@ -218,6 +228,13 @@ Ast *parse_unary(Parser *parser) {
 
     ParseFn prefix = get_rule(parser->prev->type)->prefix;
     Ast *unary = create_ast(AST_UNARY_OP, op);
+    if (!prefix) {
+        error(parser->prev->line,
+              UNEXPECTED_TOKEN,
+              "unary operator does not seem to have operand\n");
+        *parser->enc_err = 1;
+        return unary;
+    }
     add_child(unary, prefix(parser));
 
     return unary;
@@ -340,10 +357,16 @@ Ast *parse_var_decl(Parser *parser) {
     } else {
         error(parser->cur->line, UNEXPECTED_TOKEN, "Unexpected token.\n");
         *parser->enc_err = 1;
-        return NULL;
+        return 0;
     }
     if (match_token(parser, TOKEN_EQ)) {
-        add_child(decl, parse_expression(parser));
+        Ast *rhs = parse_expression(parser);
+        if (!rhs) {
+            error(parser->cur->line, NO_RHS, "no right hand side after '='\n");
+            *parser->enc_err = 1;
+            return decl;
+        }
+        add_child(decl, rhs);
     }
     if (match_token(parser, TOKEN_COLON_COLON)) {
         add_child(decl, parse_type(parser));
@@ -402,7 +425,7 @@ Ast *parse_pattern(Parser *parser) {
             free(type);
         } else if (type->type == AST_PRODUCT_TYPE) {
             add_child(pattern, copy_ast(type));
-            add_child(ret_block, type_to_destr(type));
+            add_child(ret_block, type_to_destr(type, parser));
         } else {
             add_child(pattern, type);
         }
@@ -452,7 +475,7 @@ Ast *parse_lambda(Parser *parser) {
 
     if (match_token(parser, TOKEN_LPAREN)) {
         Ast *type = parse_product_type(parser);
-        if (type->num_children != 0) add_child(block, type_to_destr(type));
+        if (type->num_children != 0) add_child(block, type_to_destr(type, parser));
     } else {
         error(parser->cur->line,
             TYPE_ERROR,
