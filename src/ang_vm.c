@@ -40,7 +40,7 @@ void eval(Ang_VM *vm) {
     case PUSOBJ: {
         Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
         obj->v = get_next_op(vm);
-        push_stack(&vm->mem, obj);
+        push_stack(&vm->mem, from_ptr(obj));
         break;
     }
     case PUSH_0:
@@ -93,49 +93,45 @@ void eval(Ang_VM *vm) {
         break;
     }
     case LTZ: {
-        Ang_Obj *result = new_object(&vm->mem,
-            find_type(&vm->compiler, "Bool"));
         double value = pop_double(&vm->mem);
-        result->v = value < 0 ? true_val : false_val;
-        push_stack(&vm->mem, result);
+        Value res = value < 0 ? true_val : false_val;
+        push_stack(&vm->mem, res);
         break;
     }
     case GTZ: {
-        Ang_Obj *result = new_object(&vm->mem,
-            find_type(&vm->compiler, "Bool"));
         double value = pop_double(&vm->mem);
-        result->v = value > 0 ? true_val : false_val;
-        push_stack(&vm->mem, result);
+        Value res = value > 0 ? true_val : false_val;
+        push_stack(&vm->mem, res);
         break;
     }
     case EQ: {
-        Ang_Obj *result = new_object(&vm->mem,
-            find_type(&vm->compiler, "Bool"));
-        result->v = pop_stack(&vm->mem)->v.bits == pop_stack(&vm->mem)->v.bits
+        Value res = pop_stack(&vm->mem).bits == pop_stack(&vm->mem).bits
             ? true_val
             : false_val;
-        push_stack(&vm->mem, result);
+        push_stack(&vm->mem, res);
         break;
     }
     case NEG: {
-        Ang_Obj *result = new_object(&vm->mem,
-            find_type(&vm->compiler, "Bool"));
-        result->v = pop_stack(&vm->mem)->v.bits == true_val.bits
+        Value res = pop_stack(&vm->mem).bits == true_val.bits
             ? false_val
             : true_val;
-        push_stack(&vm->mem, result);
+        push_stack(&vm->mem, res);
         break;
     }
 #define CMP_CODE(code) \
     {\
-    Ang_Obj *result = new_object(&vm->mem, \
-        find_type(&vm->compiler, "Bool")); \
-    const Ang_Type *t1 = pop_stack(&vm->mem)->type; \
+    Value obj1 = pop_stack(&vm->mem);\
+    const Ang_Type *t1 = 0; \
+    if (is_nil(obj1)) t1 = find_type(&vm->compiler, "Null"); \
+    else if (is_bool(obj1)) t1 = find_type(&vm->compiler, "Bool"); \
+    else if (is_int32(obj1)) t1 = find_type(&vm->compiler, "Num"); \
+    else if (is_double(obj1)) t1 = find_type(&vm->compiler, "Num"); \
+    else t1 = ((Ang_Obj *) get_ptr(obj1))->type; \
     const Ang_Type *t2 = get_ptr(get_next_op(vm)); \
-    result->v = code(t1, t2) \
+    Value res = code(t1, t2) \
         ? true_val \
         : false_val; \
-    push_stack(&vm->mem, result); }
+    push_stack(&vm->mem, res); }
     case CMP_TYPE:
         CMP_CODE(type_equality)
         break;
@@ -145,14 +141,14 @@ void eval(Ang_VM *vm) {
 #undef CMP_CODE
     case JE: {
         int jmp_loc = get_next_op(vm).as_int32;
-        vm->mem.ip = pop_stack(&vm->mem)->v.bits == true_val.bits
+        vm->mem.ip = pop_stack(&vm->mem).bits == true_val.bits
             ? jmp_loc
             : vm->mem.ip;
         break;
     }
     case JNE: {
         int jmp_loc = get_next_op(vm).as_int32;
-        vm->mem.ip = pop_stack(&vm->mem)->v.bits == false_val.bits
+        vm->mem.ip = pop_stack(&vm->mem).bits == false_val.bits
             ? jmp_loc
             : vm->mem.ip;
         break;
@@ -177,21 +173,22 @@ void eval(Ang_VM *vm) {
         break;
     case CONS_TUPLE: {
         Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
+        printf("%p\n", obj);
         List *tuple_vals = malloc(sizeof(List));
         ctor_list(tuple_vals);
         int num_slots = get_next_op(vm).as_int32;
         for (int i = 0; i < num_slots; i++) {
-            append_list(tuple_vals, from_ptr(pop_stack(&vm->mem)));
+            append_list(tuple_vals, pop_stack(&vm->mem));
         }
         obj->v = from_ptr(tuple_vals);
-        push_stack(&vm->mem, obj);
+        push_stack(&vm->mem, from_ptr(obj));
         break;
     }
     case LOAD_TUPLE: {
         int slot_num = pop_int(&vm->mem);
-        Ang_Obj *tuple = pop_stack(&vm->mem);
+        Ang_Obj *tuple = get_ptr(pop_stack(&vm->mem));
         Ang_Obj *obj = get_ptr(access_list(get_ptr(tuple->v), slot_num));
-        push_stack(&vm->mem, obj);
+        push_stack(&vm->mem, from_ptr(obj));
         break;
     }
     case CONS_ARR: {
@@ -200,34 +197,33 @@ void eval(Ang_VM *vm) {
         List *l = malloc(sizeof(List));
         ctor_list(l);
         for (int i = 0; i < num_ele; i++) {
-            append_list(l, from_ptr(pop_stack(&vm->mem)));
+            append_list(l, pop_stack(&vm->mem));
         }
         obj->v = from_ptr(l);
-        push_stack(&vm->mem, obj);
+        push_stack(&vm->mem, from_ptr(obj));
         break;
     }
     case ACCESS_ARR: {
-        Ang_Obj *arr_obj = pop_stack(&vm->mem);
-        Ang_Obj *index = pop_stack(&vm->mem);
+        Ang_Obj *arr_obj = get_ptr(pop_stack(&vm->mem));
+        Value index = pop_stack(&vm->mem);
         List *arr = get_ptr(arr_obj->v);
-        if (!is_int32(index->v) || index->v.as_int32 >= arr->length) {
-            push_stack(&vm->mem,
-                new_object(&vm->mem, find_type(&vm->compiler, "Null")));
+        if (!is_int32(index) || index.as_int32 >= arr->length) {
+            push_stack(&vm->mem, nil_val);
         }
-        push_stack(&vm->mem, get_ptr(access_list(arr, index->v.as_int32)));
+        push_stack(&vm->mem, access_list(arr, index.as_int32));
         break;
     }
     case SET_ARR: {
-        Ang_Obj *arr_obj = pop_stack(&vm->mem);
-        Ang_Obj *index = pop_stack(&vm->mem);
-        Ang_Obj *rhs = pop_stack(&vm->mem);
+        Ang_Obj *arr_obj = get_ptr(pop_stack(&vm->mem));
+        Value index = pop_stack(&vm->mem);
+        Ang_Obj *rhs = get_ptr(pop_stack(&vm->mem));
         List *arr = get_ptr(arr_obj->v);
-        if (!is_int32(index->v) || index->v.as_int32 >= arr->length) {
+        if (!is_int32(index) || index.as_int32 >= arr->length) {
             runtime_error(ARR_OUT_OF_BOUNDS,
                 "Attempted to assign out of array bounds.\n");
         }
-        set_list(arr, index->v.as_int32, from_ptr(rhs));
-        push_stack(&vm->mem, arr_obj);
+        set_list(arr, index.as_int32, from_ptr(rhs));
+        push_stack(&vm->mem, from_ptr(arr_obj));
         break;
     }
     case CONS_LAMBDA: {
@@ -236,7 +232,7 @@ void eval(Ang_VM *vm) {
         l->ip = get_next_op(vm).as_int32;
         save_lambda_env(l, &vm->mem);
         obj->v = from_ptr(l);
-        push_stack(&vm->mem, obj);
+        push_stack(&vm->mem, from_ptr(obj));
         break;
     }
     case SET_FP:
@@ -250,7 +246,7 @@ void eval(Ang_VM *vm) {
         break;
     case SET_DEFAULT_VAL: {
         const char *type_name = get_ptr(get_next_op(vm));
-        find_type(&vm->compiler, type_name)->default_value = pop_stack(&vm->mem)->v;
+        find_type(&vm->compiler, type_name)->default_value = pop_stack(&vm->mem);
         break;
     }
     case STO_REG:
@@ -262,9 +258,9 @@ void eval(Ang_VM *vm) {
     case SWAP_REG: {
         int reg1 = get_next_op(vm).as_int32;
         int reg2 = get_next_op(vm).as_int32;
-        Ang_Obj *temp = vm->mem.registers[reg1];
+        Value tmp = vm->mem.registers[reg1];
         vm->mem.registers[reg1] = vm->mem.registers[reg2];
-        vm->mem.registers[reg2] = temp;
+        vm->mem.registers[reg2] = tmp;
         break;
     }
     case MOV_REG: {
@@ -278,7 +274,7 @@ void eval(Ang_VM *vm) {
         break;
     case CALL: {
         vm->mem.registers[A] = pop_stack(&vm->mem);
-        Value l_val = pop_stack(&vm->mem)->v;
+        Value l_val = ((Ang_Obj *) get_ptr(pop_stack(&vm->mem)))->v;
         if (l_val.bits == nil_val.bits) {
             runtime_error(NON_LAMBDA_CALL, "Attempt to call uninitialized lambda\n");
             return;
@@ -295,9 +291,10 @@ void eval(Ang_VM *vm) {
     case RET:
         vm->mem.registers[RET_VAL] = pop_stack(&vm->mem);
         vm->mem.sp = vm->mem.fp;
-        vm->mem.ip = pop_stack(&vm->mem)->v.as_int32;
-        vm->mem.fp = pop_stack(&vm->mem)->v.as_int32;
+        vm->mem.ip = pop_stack(&vm->mem).as_int32;
+        vm->mem.fp = pop_stack(&vm->mem).as_int32;
         push_stack(&vm->mem, vm->mem.registers[RET_VAL]);
+        break;
     }
 }
 
@@ -311,9 +308,7 @@ int emit_op(Ang_VM *vm, Value op) {
 }
 
 void push_num_stack(Ang_VM *vm, double num) {
-    Ang_Obj *obj = new_object(&vm->mem, find_type(&vm->compiler, "Num"));
-    obj->v = from_double(num);
-    push_stack(&vm->mem, obj);
+    push_stack(&vm->mem, from_double(num));
 }
 
 void run_compiled_instructions(Ang_VM *vm, Compiler *c) {

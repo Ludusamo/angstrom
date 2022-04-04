@@ -12,16 +12,16 @@ typedef enum {
 } Registers;
 
 typedef struct {
-    Ang_Obj *stack[MAX_STACK_SIZE];
+    Value stack[MAX_STACK_SIZE];
 
     size_t gmem_size;
     size_t global_size;
-    Ang_Obj **gmem;
+    Value *gmem;
 
     size_t num_objects;
     size_t max_objects;
     Ang_Obj *mem_head;
-    Ang_Obj *registers[NUM_REGISTERS];
+    Value registers[NUM_REGISTERS];
 
     int ip, sp, fp;
 } Memory;
@@ -34,9 +34,9 @@ void mark_all_objects(Memory *mem);
 void sweep_mem(Memory *mem);
 void gc(Memory *mem);
 
-int push_stack(Memory *mem, Ang_Obj *obj);
+int push_stack(Memory *mem, Value val);
 
-Ang_Obj *pop_stack(Memory *mem);
+Value pop_stack(Memory *mem);
 int32_t pop_int(Memory *mem);
 double pop_double(Memory *mem);
 

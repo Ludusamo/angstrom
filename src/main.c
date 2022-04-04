@@ -101,7 +101,7 @@ void run_repl() {
         }
         run_code(&vm, expr, "");
         if (!vm.enc_err) {
-            Ang_Obj *result = pop_stack(&vm.mem);
+            Value result = pop_stack(&vm.mem);
             print_ang_obj(result);
             fprintf(stderr, "\n");
         } else {

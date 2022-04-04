@@ -2,7 +2,7 @@
 
 void save_lambda_env(Lambda *l, const Memory *mem) {
     l->nenv = mem->sp - mem->fp;
-    l->env = calloc(l->nenv, sizeof(Ang_Obj *));
+    l->env = calloc(l->nenv, sizeof(Value));
     for (int i = 0; i < l->nenv; i++) {
         l->env[i] = mem->stack[mem->fp + i];
     }

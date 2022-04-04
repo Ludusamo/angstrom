@@ -7,7 +7,7 @@
 typedef struct {
     int ip;
     int nenv;
-    Ang_Obj **env;
+    Value *env;
 } Lambda;
 
 void save_lambda_env(Lambda *l, const Memory *mem);
