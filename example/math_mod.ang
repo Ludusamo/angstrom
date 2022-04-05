@@ -1,0 +1,9 @@
+var Math =
+  ( add: fn (a: Num, b: Num) => a + b
+  , sub: fn (a: Num, b: Num) => a - b
+  , div: fn (a: Num, b: Num) => a / b
+  , mul: fn (a: Num, b: Num) => a * b
+  )
+
+Math.add(Math.mul(3, 4), 3);
+Math.div(Math.add(Math.mul(3, 4), 3), Math.sub(7, 2))
