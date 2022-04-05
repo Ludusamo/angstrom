@@ -326,15 +326,28 @@ void compile_literal(Compiler *c, Ast *code) {
         append_list(&c->instr, from_double(code->num_children));
         int is_record = get_child(code, 0)->type == AST_KEYVAL;
         for (int i = code->num_children - 1; i >= 0; i--) {
-            if (is_record && (get_child(code, i)->type != AST_KEYVAL
-                    && get_child(code, i)->type != AST_WILDCARD)) {
+            Ast *child = get_child(code, i);
+            if (is_record && (child->type != AST_KEYVAL
+                    && child->type != AST_WILDCARD)) {
                 error(code->assoc_token->line,
                     INCOMPLETE_RECORD,
                     "Record type needs all members to be key value pairs.\n");
                 *c->enc_err = 1;
                 return;
             }
-            compile(c, get_child(code, i));
+            if (is_record && get_child(child, 0)->type == AST_LAMBDA_LIT) {
+                append_list(&c->instr, from_double(STO_REG));
+                append_list(&c->instr, from_double(A));
+            }
+            compile(c, child);
+            if (is_record && get_child(child, 0)->type == AST_LAMBDA_LIT) {
+                append_list(&c->instr, from_double(STO_REG));
+                append_list(&c->instr, from_double(B));
+                append_list(&c->instr, from_double(LOAD_REG));
+                append_list(&c->instr, from_double(A));
+                append_list(&c->instr, from_double(LOAD_REG));
+                append_list(&c->instr, from_double(B));
+            }
             append_list(&c->instr, from_double(SET_TUPLE));
             append_list(&c->instr, from_double(i));
         }
@@ -370,8 +383,6 @@ void compile_literal(Compiler *c, Ast *code) {
         dtor_list(&slots);
         // Go back and set the type
         set_list(&c->instr, type_loc, from_ptr((void *) code->eval_type));
-        append_list(&c->instr, from_double(LOAD_REG));
-        append_list(&c->instr, from_double(A));
     }
 }
 

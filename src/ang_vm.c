@@ -180,14 +180,15 @@ void eval(Ang_VM *vm) {
             append_list(tuple_vals, nil_val);
         }
         obj->v = from_ptr(tuple_vals);
-        vm->mem.registers[A] = from_ptr(obj);
+        push_stack(&vm->mem, from_ptr(obj));
         break;
     }
     case SET_TUPLE: {
         Value v = pop_stack(&vm->mem);
-        Ang_Obj *tup = get_ptr(vm->mem.registers[A]);
+        Ang_Obj *tup = get_ptr(pop_stack(&vm->mem));
         List *vals = get_ptr(tup->v);
         set_list(vals, get_next_op(vm).as_int32, v);
+        push_stack(&vm->mem, from_ptr(tup));
         break;
     }
     case LOAD_TUPLE: {
