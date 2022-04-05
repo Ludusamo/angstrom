@@ -319,6 +319,11 @@ void compile_literal(Compiler *c, Ast *code) {
     } else if ((code->num_children > 0
             && get_child(code, 0)->type == AST_KEYVAL)
             || code->assoc_token->type == TOKEN_LPAREN) {
+        append_list(&c->instr, from_double(CONS_TUPLE));
+        // Need to fill in the type information after the rest compiles
+        append_list(&c->instr, nil_val);
+        int type_loc = c->instr.length - 1;
+        append_list(&c->instr, from_double(code->num_children));
         int is_record = get_child(code, 0)->type == AST_KEYVAL;
         for (int i = code->num_children - 1; i >= 0; i--) {
             if (is_record && (get_child(code, i)->type != AST_KEYVAL
@@ -330,6 +335,8 @@ void compile_literal(Compiler *c, Ast *code) {
                 return;
             }
             compile(c, get_child(code, i));
+            append_list(&c->instr, from_double(SET_TUPLE));
+            append_list(&c->instr, from_double(i));
         }
         List types;
         ctor_list(&types);
@@ -361,9 +368,10 @@ void compile_literal(Compiler *c, Ast *code) {
             }
         }
         dtor_list(&slots);
-        append_list(&c->instr, from_double(CONS_TUPLE));
-        append_list(&c->instr, from_ptr((void *) code->eval_type));
-        append_list(&c->instr, from_double(code->num_children));
+        // Go back and set the type
+        set_list(&c->instr, type_loc, from_ptr((void *) code->eval_type));
+        append_list(&c->instr, from_double(LOAD_REG));
+        append_list(&c->instr, from_double(A));
     }
 }
 

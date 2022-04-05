@@ -173,15 +173,21 @@ void eval(Ang_VM *vm) {
         break;
     case CONS_TUPLE: {
         Ang_Obj *obj = new_object(&vm->mem, get_ptr(get_next_op(vm)));
-        printf("%p\n", obj);
         List *tuple_vals = malloc(sizeof(List));
         ctor_list(tuple_vals);
         int num_slots = get_next_op(vm).as_int32;
         for (int i = 0; i < num_slots; i++) {
-            append_list(tuple_vals, pop_stack(&vm->mem));
+            append_list(tuple_vals, nil_val);
         }
         obj->v = from_ptr(tuple_vals);
-        push_stack(&vm->mem, from_ptr(obj));
+        vm->mem.registers[A] = from_ptr(obj);
+        break;
+    }
+    case SET_TUPLE: {
+        Value v = pop_stack(&vm->mem);
+        Ang_Obj *tup = get_ptr(vm->mem.registers[A]);
+        List *vals = get_ptr(tup->v);
+        set_list(vals, get_next_op(vm).as_int32, v);
         break;
     }
     case LOAD_TUPLE: {
