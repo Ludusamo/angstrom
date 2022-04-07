@@ -40,7 +40,8 @@ ParseRule rules[] = {
     { parse_literal, NULL, PREC_NONE }, // TOKEN_NUM
     { parse_literal, NULL, PREC_NONE }, // TOKEN_TRUE
     { parse_literal, NULL, PREC_NONE }, // TOKEN_FALSE
-    { parse_var_decl, NULL, PREC_ASSIGNMENT }, // TOKEN_VAR
+    { parse_var_decl, NULL, PREC_DECLARATION }, // TOKEN_VAR
+    { parse_val_decl, NULL, PREC_DECLARATION }, // TOKEN_LET
     { parse_lambda, NULL, PREC_NONE }, // TOKEN_FN
     { parse_pattern_matching, NULL, PREC_NONE }, // TOKEN_MATCH
     { parse_type_decl, NULL, PREC_NONE }, // TOKEN_TYPE_KEYWORD
@@ -97,6 +98,9 @@ void ctor_parser(Parser *parser, const char *code, const char *src_name) {
 void dtor_parser(Parser *parser) {
     dtor_scanner(&parser->scanner);
     for (int i = 0; i < parser->num_tokens; i++) {
+        if (is_ptr(parser->tokens[i]->literal)) {
+            free(get_ptr(parser->tokens[i]->literal));
+        }
         free(parser->tokens[i]->lexeme);
         free(parser->tokens[i]);
     }
@@ -131,6 +135,7 @@ static Ast *type_to_destr(Ast *type, Parser *parser) {
             // Variable declaration
             const Token *var_name = get_child(type, 0)->assoc_token;
             destr = create_ast(AST_VAR_DECL, var_name);
+            add_child(destr, create_ast(AST_IMMUT, var_name));
 
             // only one type
             Ast *ptype = get_child(get_child(type, 0), 0);
@@ -152,6 +157,7 @@ static Ast *type_to_destr(Ast *type, Parser *parser) {
             type = copy;
         } else {
             destr = create_ast(AST_DESTR_DECL, type->assoc_token);
+            add_child(destr, create_ast(AST_IMMUT, type->assoc_token));
             add_child(destr, record_type_to_destr(type));
         }
         Ast *placehold = create_ast(AST_PLACEHOLD, type->assoc_token);
@@ -177,13 +183,16 @@ Ast *parse_precedence(Parser *parser, Precedence precedence) {
     ParseFn prefix_rule = get_rule(parser->prev->type)->prefix;
     if (parser->prev->type == TOKEN_END) return NULL;
     if (prefix_rule == NULL) {
-        fprintf(stderr, "received unexpected token %s\n", parser->prev->lexeme);
-        return NULL;
+        error(parser->prev->line,
+              UNEXPECTED_TOKEN,
+              "encountered unexpected token\n");
+        *parser->enc_err = 1;
+        return 0;
     }
 
     Ast *prefix = prefix_rule(parser);
 
-    while (precedence <= get_rule(parser->cur->type)->precedence) {
+    while (precedence < get_rule(parser->cur->type)->precedence) {
         advance_parser(parser);
         ParseFn infix_rule = get_rule(parser->prev->type)->infix;
         prefix = add_child(infix_rule(parser), prefix);
@@ -192,7 +201,7 @@ Ast *parse_precedence(Parser *parser, Precedence precedence) {
 }
 
 Ast *parse_expression(Parser *parser) {
-    return parse_precedence(parser, PREC_ASSIGNMENT);
+    return parse_precedence(parser, PREC_DECLARATION);
 }
 
 Ast *parse_grouping(Parser *parser) {
@@ -347,12 +356,15 @@ static Ast *parse_destr_tuple(Parser *parser) {
     return ast;
 }
 
-Ast *parse_var_decl(Parser *parser) {
+static Ast *parse_decl(Parser *parser, int mut) {
     Ast *decl = NULL;
+    Ast *mut_ast = create_ast(mut ? AST_MUT : AST_IMMUT, parser->prev);
     if (match_token(parser, TOKEN_IDENT)) {
         decl = create_ast(AST_VAR_DECL, parser->prev);
+        add_child(decl, mut_ast);
     } else if (match_token(parser, TOKEN_LPAREN)) {
         decl = create_ast(AST_DESTR_DECL, parser->prev);
+        add_child(decl, mut_ast);
         add_child(decl, parse_destr_tuple(parser));
     } else {
         error(parser->cur->line, UNEXPECTED_TOKEN, "Unexpected token.\n");
@@ -372,6 +384,14 @@ Ast *parse_var_decl(Parser *parser) {
         add_child(decl, parse_type(parser));
     }
     return decl;
+}
+
+Ast *parse_var_decl(Parser *parser) {
+    return parse_decl(parser, 1);
+}
+
+Ast *parse_val_decl(Parser *parser) {
+    return parse_decl(parser, 0);
 }
 
 Ast *parse_var(Parser *parser) {

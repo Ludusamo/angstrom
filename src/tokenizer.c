@@ -111,6 +111,7 @@ Value number(Scanner *scanner) {
 void populate_keywords(Hashtable *keywords) {
     ctor_hashtable(keywords);
     set_hashtable(keywords, "var", from_double(TOKEN_VAR));
+    set_hashtable(keywords, "val", from_double(TOKEN_VAL));
     set_hashtable(keywords, "fn", from_double(TOKEN_FN));
     set_hashtable(keywords, "_", from_double(TOKEN_UNDERSCORE));
     set_hashtable(keywords, "type", from_double(TOKEN_TYPE_KEYWORD));

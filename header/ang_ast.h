@@ -18,6 +18,7 @@
     code(UNARY_OP) \
     code(BIND_LOCAL) \
     code(VAR_DECL) \
+    code(VAL_DECL) \
     code(TYPE_DECL) \
     code(DESTR_DECL) \
     code(ASSIGN) \
@@ -38,6 +39,8 @@
     code(LAMBDA_LIT) \
     code(LAMBDA_CALL) \
     code(PATTERN_MATCH) \
+    code(MUT) \
+    code(IMMUT) \
     code(PATTERN)
 
 #define DEFINE_ENUM_TYPE(type) AST_##type,

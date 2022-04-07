@@ -5,6 +5,7 @@
 
 typedef enum {
     PREC_NONE,
+    PREC_DECLARATION,
     PREC_ASSIGNMENT,
     PREC_OR,
     PREC_AND,
@@ -68,6 +69,7 @@ Ast *parse_unary(Parser *parser);
 Ast *parse_binary(Parser *parser);
 Ast *parse_type(Parser *parser);
 Ast *parse_var_decl(Parser *parser);
+Ast *parse_val_decl(Parser *parser);
 Ast *parse_var(Parser *parser);
 Ast *parse_block(Parser *parser);
 Ast *parse_pattern(Parser *parser);

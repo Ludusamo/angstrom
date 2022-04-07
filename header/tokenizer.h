@@ -40,6 +40,7 @@
     code(TRUE) \
     code(FALSE) \
     code(VAR) \
+    code(VAL) \
     code(FN) \
     code(MATCH) \
     code(TYPE_KEYWORD) \

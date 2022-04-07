@@ -88,6 +88,7 @@ void compile(Compiler *c, Ast *code) {
         compile_type_decl(c, code);
         break;
     case AST_VAR_DECL:
+    case AST_VAL_DECL:
         compile_decl(c, code);
         break;
     case AST_DESTR_DECL:
@@ -473,7 +474,7 @@ void compile_bind_local(Compiler *c, Ast *code) {
 void compile_decl(Compiler *c, Ast *code) {
     const Ang_Type *type = find_type(c, "Und");
     int has_assignment = 0;
-    for (size_t i = 0; i < code->num_children; i++) {
+    for (size_t i = 1; i < code->num_children; i++) {
         Ast *child = get_child(code, i);
         if (child->type == AST_TYPE ||
                 child->type == AST_SUM_TYPE ||
@@ -493,8 +494,8 @@ void compile_decl(Compiler *c, Ast *code) {
         push_default_value(c, type, type->default_value);
     } else {
         if (type->id == UNDECLARED)
-            type = get_child(code, 0)->eval_type;
-        if (!type_equality(type, get_child(code, 0)->eval_type)) {
+            type = get_child(code, 1)->eval_type;
+        if (!type_equality(type, get_child(code, 1)->eval_type)) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
             *c->enc_err = 1;
             return;
@@ -510,7 +511,8 @@ void compile_decl(Compiler *c, Ast *code) {
         *c->enc_err = 1;
         return;
     }
-    create_symbol(&c->env, sym, type, loc, 1, has_assignment, !local);
+    int mut = get_child(code, 0)->type == AST_MUT;
+    create_symbol(&c->env, sym, type, loc, mut, has_assignment, !local);
 
     if (!local) {
         append_list(&c->instr, from_double(GSTORE));
@@ -538,7 +540,7 @@ void compile_return(Compiler *c, Ast *code) {
 void compile_destr_decl(Compiler *c, Ast *code) {
     const Ang_Type *tuple_type = find_type(c, "Und");
     int has_assignment = 0;
-    for (size_t i = 1; i < code->num_children; i++) {
+    for (size_t i = 2; i < code->num_children; i++) {
         Ast *child = get_child(code, i);
         if (child->type == AST_TYPE ||
                 child->type == AST_SUM_TYPE ||
@@ -553,8 +555,8 @@ void compile_destr_decl(Compiler *c, Ast *code) {
     }
     if (has_assignment) {
         if (tuple_type->id == UNDECLARED)
-            tuple_type = get_child(code, 1)->eval_type;
-        if (!type_equality(tuple_type, get_child(code, 1)->eval_type)) {
+            tuple_type = get_child(code, 2)->eval_type;
+        if (!type_equality(tuple_type, get_child(code, 2)->eval_type)) {
             error(code->assoc_token->line, TYPE_ERROR, "RHS type mismatch.\n");
             *c->enc_err = 1;
         }
@@ -577,7 +579,8 @@ void compile_destr_decl(Compiler *c, Ast *code) {
         return;
     }
 
-    compile_destr_decl_helper(c, has_assignment, get_child(code, 0), tuple_type);
+    int mut = get_child(code, 0)->type == AST_MUT;
+    compile_destr_decl_helper(c, has_assignment, get_child(code, 1), tuple_type, mut);
 
     if (has_assignment) {
         append_list(&c->instr, from_double(LOAD_REG));
@@ -594,7 +597,7 @@ void compile_destr_decl(Compiler *c, Ast *code) {
     }
 }
 
-void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const Ang_Type *ttype) {
+void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const Ang_Type *ttype, int mut) {
     if (lhs->num_children > ttype->slot_types->length) {
         error(lhs->assoc_token->line,
             INSUFFICIENT_TUPLE,
@@ -622,7 +625,7 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
                 append_list(&c->instr, from_double(A));
             }
             const Ang_Type *inner_ttype = get_ptr(access_list(ttype->slot_types, i));
-            compile_destr_decl_helper(c, has_assignment, get_child(lhs, i), inner_ttype);
+            compile_destr_decl_helper(c, has_assignment, get_child(lhs, i), inner_ttype, mut);
 
             // Restore outer tuple
             if(has_assignment) {
@@ -651,7 +654,7 @@ void compile_destr_decl_helper(Compiler *c, int has_assignment, Ast *lhs, const 
             *c->enc_err = 1;
             return;
         }
-        create_symbol(&c->env, sym, slot_type, loc, 0, has_assignment, !local);
+        create_symbol(&c->env, sym, slot_type, loc, mut, has_assignment, !local);
 
         if (!local) {
             append_list(&c->instr, from_double(GSTORE));
