@@ -312,9 +312,7 @@ void compile_literal(Compiler *c, Ast *code) {
         code->eval_type = find_type(c, "String");
     } else if (code->assoc_token->type == TOKEN_TRUE ||
         code->assoc_token->type == TOKEN_FALSE) {
-        code->eval_type = find_type(c, "Bool");
-        append_list(&c->instr, from_double(PUSOBJ));
-        append_list(&c->instr, from_ptr((void *) code->eval_type));
+        append_list(&c->instr, from_double(PUSH));
         append_list(&c->instr,
             code->assoc_token->type == TOKEN_TRUE ? true_val : false_val);
     } else if ((code->num_children > 0
