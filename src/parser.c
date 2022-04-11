@@ -36,7 +36,7 @@ ParseRule rules[] = {
     { NULL, NULL, PREC_NONE }, // TOKEN_THIN_ARROW
     { NULL, NULL, PREC_NONE }, // TOKEN_ARROW
     { parse_var, NULL, PREC_NONE }, // TOKEN_IDENT
-    { NULL, NULL, PREC_NONE }, // TOKEN_STR
+    { parse_literal, NULL, PREC_NONE }, // TOKEN_STR
     { parse_literal, NULL, PREC_NONE }, // TOKEN_NUM
     { parse_literal, NULL, PREC_NONE }, // TOKEN_TRUE
     { parse_literal, NULL, PREC_NONE }, // TOKEN_FALSE

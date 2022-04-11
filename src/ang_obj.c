@@ -40,7 +40,9 @@ void print_ang_obj(const Value val) {
         Ang_Obj *obj = get_ptr(val);
         Value v = obj->v;
         const Ang_Type *t = obj->type;
-        if (t->cat == ARRAY) {
+        if (t->id == STRING_TYPE) {
+            fprintf(stderr, "%s", (char *) get_ptr(v));
+        } else if (t->cat == ARRAY) {
             fprintf(stderr, "[ ");
             List *slots = get_ptr(v);
             for (size_t i = 0; i < slots->length; i++) {

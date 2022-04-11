@@ -71,7 +71,9 @@ void sweep_mem(Memory *mem) {
     Ang_Obj **obj = &mem->mem_head;
     while (*obj) {
         if (!(*obj)->marked) {
-            if ((*obj)->type->cat != LAMBDA) { // Is a user defined type
+            if ((*obj)->type->id == STRING_TYPE) {
+                free(get_ptr((*obj)->v));
+            } else if ((*obj)->type->cat != LAMBDA) { // Is a user defined type
                 List *tuple_val = get_ptr((*obj)->v);
                 dtor_list(tuple_val);
                 free(tuple_val);

@@ -256,6 +256,11 @@ void eval(Ang_VM *vm) {
         find_type(&vm->compiler, type_name)->default_value = pop_stack(&vm->mem);
         break;
     }
+    case LOAD_DEFAULT_VAL: {
+        Ang_Type *type = get_ptr(get_next_op(vm));
+        push_stack(&vm->mem, type->default_value);
+        break;
+    }
     case STO_REG:
         vm->mem.registers[get_next_op(vm).as_int32] = pop_stack(&vm->mem);
         break;

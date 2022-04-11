@@ -308,8 +308,16 @@ void compile_literal(Compiler *c, Ast *code) {
         append_list(&c->instr, from_double(PUSH));
         append_list(&c->instr, literal);
     } else if (code->assoc_token->type == TOKEN_STR) {
-        //TODO: Handle Strings
-        code->eval_type = find_type(c, "String");
+        Ang_Type *str_type = find_type(c, "String");
+        code->eval_type = str_type;
+        // -2 for quotes and +1 for null byte
+        size_t len = strlen(code->assoc_token->lexeme) - 1;
+        char *str = calloc(len, sizeof(char));
+        strncpy(str, code->assoc_token->lexeme + 1, len - 1);
+
+        append_list(&c->instr, from_double(PUSOBJ));
+        append_list(&c->instr, from_ptr(str_type));
+        append_list(&c->instr, from_ptr(str));
     } else if (code->assoc_token->type == TOKEN_TRUE ||
         code->assoc_token->type == TOKEN_FALSE) {
         append_list(&c->instr, from_double(PUSH));
@@ -1223,18 +1231,26 @@ void push_default_value(Compiler *c, const Ang_Type *t, Value default_value) {
         append_list(&c->instr, from_double(PUSH));
         append_list(&c->instr, default_value);
     } else if (t->cat == PRODUCT) {
-        // Construct default value
-        const List *def_val = get_ptr(default_value);
-        for (int i = t->slot_types->length - 1; i >= 0; i--) {
-            const Ang_Type *slot_type = get_ptr(access_list(t->slot_types, i));
-            push_default_value(c, slot_type, access_list(def_val, i));
+        if (default_value.bits != nil_val.bits) {
+            append_list(&c->instr, from_double(LOAD_DEFAULT_VAL));
+            append_list(&c->instr, from_ptr((Ang_Type *) t));
+        } else {
+            // Construct default value
+            append_list(&c->instr, from_double(CONS_TUPLE));
+            // Push on the type of the object
+            Value type_val = from_ptr((void *) t);
+            append_list(&c->instr, type_val);
+            // Push the number of slots
+            append_list(&c->instr, from_double(t->slot_types->length));
+
+            const List *def_val = get_ptr(default_value);
+            for (int i = t->slot_types->length - 1; i >= 0; i--) {
+                const Ang_Type *slot_type = get_ptr(access_list(t->slot_types, i));
+                push_default_value(c, slot_type, access_list(def_val, i));
+                append_list(&c->instr, from_double(SET_TUPLE));
+                append_list(&c->instr, from_double(i));
+            }
         }
-        append_list(&c->instr, from_double(CONS_TUPLE));
-        // Push on the type of the object
-        Value type_val = from_ptr((void *) t);
-        append_list(&c->instr, type_val);
-        // Push the number of slots
-        append_list(&c->instr, from_double(t->slot_types->length));
     } else if (t->cat == ARRAY) {
         append_list(&c->instr, from_double(CONS_ARR));
         // Push on the type of the object
