@@ -1,4 +1,4 @@
-#include "lambda.h"
+#include "ang_lambda.h"
 
 void save_lambda_env(Lambda *l, const Memory *mem) {
     l->nenv = mem->sp - mem->fp;

@@ -2,7 +2,7 @@
 
 #include "error.h"
 #include "ang_primitives.h"
-#include "lambda.h"
+#include "ang_lambda.h"
 #include <stdio.h>
 
 void ctor_memory(Memory *mem, size_t gmem_size) {

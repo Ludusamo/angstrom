@@ -1,7 +1,7 @@
 #include "ang_obj.h"
 
 #include "ang_primitives.h"
-#include "lambda.h"
+#include "ang_lambda.h"
 #include "stdio.h"
 
 void mark_ang_obj(Ang_Obj *obj) {

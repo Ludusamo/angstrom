@@ -5,7 +5,7 @@
 #include "ang_opcodes.h"
 #include "ang_primitives.h"
 #include "ang_debug.h"
-#include "lambda.h"
+#include "ang_lambda.h"
 #include <math.h>
 
 void ctor_ang_vm(Ang_VM *vm, size_t gmem_size) {
