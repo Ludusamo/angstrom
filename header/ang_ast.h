@@ -35,6 +35,7 @@
     code(RET_EXPR) \
     code(KEYVAL) \
     code(PLACEHOLD) \
+    code(EMPTY) \
     code(ARRAY) \
     code(LAMBDA_LIT) \
     code(LAMBDA_CALL) \

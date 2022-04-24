@@ -51,6 +51,7 @@ void compile_block(Compiler *c, Ast *code);
 void compile_lambda(Compiler *c, Ast *code);
 void compile_lambda_call(Compiler *c, Ast *code);
 void compile_placeholder(Compiler *c, Ast *code);
+void compile_empty(Compiler *c, Ast *code);
 
 void compile_pattern(Compiler *c, Ast *code);
 void compile_match(Compiler *c, Ast *code);

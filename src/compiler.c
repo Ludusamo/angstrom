@@ -115,6 +115,9 @@ void compile(Compiler *c, Ast *code) {
     case AST_PLACEHOLD:
         compile_placeholder(c, code);
         break;
+    case AST_EMPTY:
+        compile_empty(c, code);
+        break;
     case AST_PATTERN_MATCH:
         compile_match(c, code);
         break;
@@ -944,7 +947,7 @@ Ang_Type *compile_type(Compiler *c, Ast *code) {
 
 char *construct_tuple_name(const List *slots, const List *types) {
     // (slot:type,...,slot:type)
-    size_t name_size = 2 + types->length + slots->length;
+    size_t name_size = 2 + types->length + slots->length + 1;
     for (size_t i = 0; i < slots->length; i++) {
         name_size += strlen(((char *) get_ptr(access_list(slots, i))));
     }
@@ -1090,6 +1093,14 @@ void compile_lambda_call(Compiler *c, Ast *code) {
 
     compile(c, lambda);
     compile(c, param);
+    if (param->type == AST_EMPTY) {
+        append_list(&c->instr, from_double(CONS_TUPLE));
+        // Push on the type of the object
+        Value type_val = from_ptr(find_type(c, "()"));
+        append_list(&c->instr, type_val);
+        // Push the number of slots
+        append_list(&c->instr, from_double(0));
+    }
 
     const Ang_Type *lambda_type = lambda->eval_type;
     if (!lambda_type || lambda_type->cat != LAMBDA) {
@@ -1120,6 +1131,13 @@ void compile_placeholder(Compiler *c, Ast *code) {
     code->eval_type = compile_type(c, get_child(code, 0));
     append_list(&c->instr, from_double(LOAD_REG));
     append_list(&c->instr, from_double(A));
+}
+
+void compile_empty(Compiler *c, Ast *code) {
+    List empty;
+    ctor_list(&empty);
+    code->eval_type = get_tuple_type(c, &empty, &empty);
+    dtor_list(&empty);
 }
 
 void compile_pattern(Compiler *c, Ast *code) {

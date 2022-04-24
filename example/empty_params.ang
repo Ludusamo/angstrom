@@ -1,0 +1,3 @@
+val test = fn () => 0
+
+test()

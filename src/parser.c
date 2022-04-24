@@ -494,8 +494,13 @@ Ast *parse_lambda(Parser *parser) {
     add_child(lambda, block);
 
     if (match_token(parser, TOKEN_LPAREN)) {
-        Ast *type = parse_product_type(parser);
-        if (type->num_children != 0) add_child(block, type_to_destr(type, parser));
+        if (!peek_token(parser, TOKEN_RPAREN)) {
+            Ast *type = parse_product_type(parser);
+            if (type->num_children != 0) add_child(block, type_to_destr(type, parser));
+        } else {
+            add_child(block, create_ast(AST_EMPTY, parser->prev));
+            advance_parser(parser);
+        }
     } else {
         error(parser->cur->line,
             TYPE_ERROR,
@@ -514,7 +519,11 @@ Ast *parse_lambda(Parser *parser) {
 
 Ast *parse_lambda_call(Parser *parser) {
     Ast *lambda_call = create_ast(AST_LAMBDA_CALL, parser->prev);
-    return add_child(lambda_call, parse_grouping(parser));
+    if (!peek_token(parser, TOKEN_RPAREN)) {
+        return add_child(lambda_call, parse_grouping(parser));
+    }
+    advance_parser(parser);
+    return add_child(lambda_call, create_ast(AST_EMPTY, parser->prev));
 }
 
 Ast *parse_assign(Parser *parser) {
