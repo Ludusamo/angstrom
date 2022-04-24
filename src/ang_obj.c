@@ -36,6 +36,8 @@ void print_ang_obj(const Value val) {
         fprintf(stderr, "%.2lf", val.as_double);
     } else if (is_int32(val)) {
         fprintf(stderr, "%d", val.as_int32);
+    } else if (is_fn(val)) {
+        fprintf(stderr, "<foreign_fn>");
     } else {
         Ang_Obj *obj = get_ptr(val);
         Value v = obj->v;

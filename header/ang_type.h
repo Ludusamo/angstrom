@@ -8,6 +8,7 @@ typedef enum {
     SUM,
     PRODUCT,
     LAMBDA,
+    NATIVE_LAMBDA,
     PARAMETRIC,
     ARRAY
 } Type_Category;

@@ -21,6 +21,8 @@ struct Compiler{
 void ctor_compiler(Compiler *compiler);
 void dtor_compiler(Compiler *compiler);
 
+Ang_Type *get_lambda_type(Compiler *c, const Ang_Type *lhs, const Ang_Type *rhs, int foreign);
+
 void compile_code(Compiler *c, const char *code, const char *src_name);
 
 void compile(Compiler *c, Ast *code);

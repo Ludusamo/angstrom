@@ -7,6 +7,7 @@
 #include "ang_type.h"
 #include "compiler.h"
 #include "ang_primitives.h"
+#include "ang_time.h"
 
 static char *get_line(void) {
     char * line = malloc(100), * linep = line;
@@ -68,6 +69,11 @@ void run_script(char *file_path) {
     set_hashtable(&vm.compiler.env.types, "String", from_ptr(&defaults.string_default));
     set_hashtable(&vm.compiler.env.types, "Null", from_ptr(&defaults.null_default));
 
+    List empty;
+    ctor_list(&empty);
+    add_foreign_fn(&vm, "clock", clockNative, get_tuple_type(&vm.compiler, &empty, &empty), find_type(&vm.compiler, "Num"));
+    dtor_list(&empty);
+
     char *file_contents = read_file(file_path);
     run_code(&vm, file_contents, file_path);
     free(file_contents);
@@ -91,6 +97,12 @@ void run_repl() {
     set_hashtable(&vm.compiler.env.types, "Bool", from_ptr(&defaults.bool_default));
     set_hashtable(&vm.compiler.env.types, "String", from_ptr(&defaults.string_default));
     set_hashtable(&vm.compiler.env.types, "Null", from_ptr(&defaults.null_default));
+
+    List empty;
+    ctor_list(&empty);
+    add_foreign_fn(&vm, "clock", clockNative, get_tuple_type(&vm.compiler, &empty, &empty), find_type(&vm.compiler, "Num"));
+    dtor_list(&empty);
+
     char *expr;
     for (;;) {
         printf("> ");

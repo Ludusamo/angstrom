@@ -208,7 +208,7 @@ Ast *parse_grouping(Parser *parser) {
     Token *paren = parser->prev;
     Ast *expr = parse_expression(parser);
 
-     if (match_token(parser, TOKEN_COMMA)) {
+    if (match_token(parser, TOKEN_COMMA)) {
         Ast *tuple = create_ast(AST_LITERAL, paren);
         expr = add_child(tuple, expr);
         do {

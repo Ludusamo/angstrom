@@ -3,6 +3,9 @@
 
 #include "ang_obj.h"
 #include "ang_mem.h"
+#include "value.h"
+
+typedef Value (*AngNativeFn)(Value arg);
 
 typedef struct {
     int ip;

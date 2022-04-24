@@ -6,6 +6,7 @@
 #include "ang_mem.h"
 #include "list.h"
 #include "compiler.h"
+#include "ang_lambda.h"
 
 #define INSTR(vm) vm->compiler.instr
 
@@ -20,6 +21,8 @@ typedef struct {
 
 void ctor_ang_vm(Ang_VM *vm, size_t gmem_size);
 void dtor_ang_vm(Ang_VM *vm);
+
+void add_foreign_fn(Ang_VM *vm, const char *name, AngNativeFn fn, const Ang_Type *arg_type, const Ang_Type *ret_type);
 
 Value get_next_op(Ang_VM *vm);
 void eval(Ang_VM *vm);

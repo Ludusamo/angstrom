@@ -26,6 +26,12 @@ Value get_next_op(Ang_VM *vm) {
     return access_list(&INSTR(vm), vm->mem.ip++);
 }
 
+void add_foreign_fn(Ang_VM *vm, const char *name, AngNativeFn fn, const Ang_Type *arg_type, const Ang_Type *ret_type) {
+    int loc = vm->compiler.env.symbols.size;
+    create_symbol(&vm->compiler.env, name, get_lambda_type(&vm->compiler, arg_type, ret_type, 1), loc, 0, 1, 1);
+    vm->mem.gmem[loc] = from_fn(fn);
+}
+
 void eval(Ang_VM *vm) {
     int op = fetch(vm);
     if (vm->trace) print_stack_trace(vm);
@@ -298,6 +304,13 @@ void eval(Ang_VM *vm) {
         vm->mem.fp = vm->mem.sp;
         load_lambda_env(l, &vm->mem);
         vm->mem.ip = ip;
+        break;
+    }
+    case CALL_FN: {
+        Value arg = pop_stack(&vm->mem);
+        AngNativeFn fn = (AngNativeFn) get_fn(pop_stack(&vm->mem));
+        Value res = fn(arg);
+        push_stack(&vm->mem, res);
         break;
     }
     case RET:
